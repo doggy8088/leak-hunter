@@ -40,6 +40,32 @@
 }
 
 @layer components {
+  :is(html[lang^="zh"], html[lang="ja"], html[lang="ko"], html[lang="th"]) [data-i18n="heroTitle"] {
+    font-size: clamp(3.35rem, 6vw, 6.25rem) !important;
+    letter-spacing: -0.055em !important;
+    line-height: 0.96 !important;
+    text-wrap: balance;
+  }
+
+  :is(html[lang^="zh"], html[lang="ja"], html[lang="ko"], html[lang="th"]) .hero-accent {
+    color: var(--color-radar);
+    display: block;
+    text-shadow: 0 0 34px rgba(29, 242, 206, 0.18);
+  }
+
+  @media (min-width: 64rem) {
+    :is(html[lang^="zh"], html[lang="ja"], html[lang="ko"], html[lang="th"]) #top {
+      grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr) !important;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    :is(html[lang^="zh"], html[lang="ja"], html[lang="ko"], html[lang="th"]) [data-i18n="heroTitle"] {
+      font-size: clamp(3rem, 15vw, 3.8rem) !important;
+      line-height: 1.02 !important;
+    }
+  }
+
   .language-control {
     align-items: center;
     background:
