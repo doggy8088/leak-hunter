@@ -13,7 +13,7 @@ fn npm_publish_workflow_uses_trusted_publishing_and_updates_npm() {
 fn npm_package_metadata_matches_cargo_and_exposes_expected_bins() {
     let package = std::fs::read_to_string("package.json").unwrap();
     let cargo = std::fs::read_to_string("Cargo.toml").unwrap();
-    assert!(package.contains("\"name\": \"@doggy8088/leak-hunter\""));
+    assert!(package.contains("\"name\": \"leak-hunter\""));
     assert!(package.contains("\"leak-hunter\": \"npm/cli.cjs\""));
     assert!(package.contains(
         "\"prepublishOnly\": \"npm test && npm pack --dry-run && node npm/prepublish-check.cjs\""

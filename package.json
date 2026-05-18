@@ -1,5 +1,5 @@
 {
-  "name": "@doggy8088/leak-hunter",
+  "name": "leak-hunter",
   "version": "0.1.0",
   "description": "Cross-platform repository secret scanner",
   "bin": {

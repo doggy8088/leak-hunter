@@ -9,7 +9,7 @@ const exe = process.platform === 'win32' ? 'leak-hunter.exe' : 'leak-hunter';
 const bin = join(__dirname, 'leak-hunter-bin', exe);
 
 if (!existsSync(bin)) {
-  console.error('leak-hunter native binary was not found. Try reinstalling @doggy8088/leak-hunter.');
+  console.error('leak-hunter native binary was not found. Try reinstalling leak-hunter.');
   process.exit(1);
 }
 
