@@ -1003,11 +1003,17 @@ next:  context prüfen, bei Echtheit rotieren, report redacted halten`,
       const aliases = {
         zh: "zh-TW",
         "zh-hant": "zh-TW",
+        "zh-hant-hk": "zh-TW",
+        "zh-hant-mo": "zh-TW",
         "zh-hant-tw": "zh-TW",
+        "zh-hk": "zh-TW",
+        "zh-mo": "zh-TW",
         "zh-tw": "zh-TW",
         "zh-hans": "zh-CN",
         "zh-hans-cn": "zh-CN",
+        "zh-hans-sg": "zh-CN",
         "zh-cn": "zh-CN",
+        "zh-sg": "zh-CN",
         ja: "ja",
         "ja-jp": "ja",
         ko: "ko",
@@ -1053,7 +1059,7 @@ next:  context prüfen, bei Echtheit rotieren, report redacted halten`,
         return browserLanguages.map(normalizeLanguage).find(Boolean);
       }
 
-      function applyLanguage(language) {
+      function applyLanguage(language, { persist = false } = {}) {
         const code = normalizeLanguage(language) || "en";
         const dictionary = translations[code];
 
@@ -1084,18 +1090,19 @@ next:  context prüfen, bei Echtheit rotieren, report redacted halten`,
         });
 
         select.value = code;
-        localStorage.setItem("leakHunterLanguage", code);
+        if (persist) {
+          localStorage.setItem("leakHunterLanguage", code);
+        }
       }
 
       const requestedLanguage = new URLSearchParams(window.location.search).get("lang");
-      const initialLanguage =
-        normalizeLanguage(requestedLanguage) || normalizeLanguage(localStorage.getItem("leakHunterLanguage")) || languageFromNavigator() || "en";
+      const initialLanguage = normalizeLanguage(requestedLanguage) || languageFromNavigator() || normalizeLanguage(localStorage.getItem("leakHunterLanguage")) || "en";
 
       applyLanguage(initialLanguage);
 
       select.addEventListener("change", (event) => {
         const code = event.target.value;
-        applyLanguage(code);
+        applyLanguage(code, { persist: true });
 
         const url = new URL(window.location.href);
         url.searchParams.set("lang", code);
