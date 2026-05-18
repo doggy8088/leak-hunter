@@ -1,5 +1,9 @@
 # leak-hunter
 
+<p align="center">
+  <img src="docs/assets/leak-hunter-banner.png" alt="leak-hunter repository secret scanner banner" width="100%">
+</p>
+
 `leak-hunter` 是一套以本機執行為優先的防禦型 Repo 敏感資訊掃描 CLI。它提供單一跨平台 binary，可掃描 GitHub repository URL、`owner/repo` 簡寫、GitHub SSH target，或本機資料夾，並輸出 Text、JSON、Markdown 報告。
 
 Rust crate 是唯一的核心實作；npm package `leak-hunter` 是 thin wrapper，用來安裝並執行 GitHub Release 內由 cargo-dist 產生的 native binary。
