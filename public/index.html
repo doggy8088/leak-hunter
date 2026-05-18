@@ -85,7 +85,6 @@
         </nav>
 
         <label class="language-control">
-          <span data-i18n="languageLabel">Language</span>
           <select id="language-select" class="language-select" data-i18n-attr="aria-label:languageAria">
             <option value="en">English</option>
             <option value="zh-TW">繁體中文</option>
@@ -108,7 +107,7 @@
             <span class="size-2 rounded-full bg-radar shadow-[0_0_18px_currentColor]"></span>
             <span data-i18n="badge">Redaction-first CLI</span>
           </p>
-          <h1 class="max-w-5xl font-display text-[clamp(4.2rem,13vw,10.5rem)] leading-[0.78] tracking-[-0.075em] text-ivory" data-i18n="heroTitle">
+          <h1 class="max-w-5xl font-display text-[clamp(3.4rem,9vw,8.25rem)] leading-none tracking-[-0.065em] text-ivory" data-i18n="heroTitle">
             Find exposed secrets before attackers do.
           </h1>
           <p class="mt-8 max-w-2xl text-base leading-8 text-mist sm:text-lg" data-i18n="heroCopy">
@@ -376,158 +375,158 @@ next:  review context, rotate if real, keep report redacted`,
         },
         "zh-TW": {
           htmlLang: "zh-Hant-TW",
-          pageTitle: "leak-hunter — 本機優先的 Repo 敏感資訊掃描器",
-          metaDescription: "leak-hunter 是跨平台 CLI，可掃描本機資料夾與 GitHub repository，找出疑似外洩的 secrets，並產生預設遮罩、適合 CI 保存的報告。",
+          pageTitle: "leak-hunter — 本機優先的儲存庫敏感資訊掃描器",
+          metaDescription: "leak-hunter 是跨平台命令列工具，可掃描本機資料夾與 GitHub 儲存庫，找出疑似外洩的敏感資訊，並產生預設遮罩、適合 CI 保存的報告。",
           ogLocale: "zh_TW",
-          ogTitle: "leak-hunter — 在攻擊者之前找出外洩 secrets",
-          ogDescription: "本機優先的 repo secret scanner，預設 redaction，支援 GitHub target，並提供 JSON/Markdown CI 報告。",
-          twitterTitle: "leak-hunter — 本機優先的 Repo 敏感資訊掃描器",
-          twitterDescription: "掃描資料夾與 GitHub repositories 以找出疑似外洩 secrets，並輸出適合人類與 CI 使用的遮罩報告。",
+          ogTitle: "leak-hunter — 在攻擊者之前找出外洩敏感資訊",
+          ogDescription: "本機優先的儲存庫敏感資訊掃描器，預設遮罩，支援 GitHub 目標，並提供適合 CI 的 JSON 與 Markdown 報告。",
+          twitterTitle: "leak-hunter — 本機優先的儲存庫敏感資訊掃描器",
+          twitterDescription: "掃描資料夾與 GitHub 儲存庫以找出疑似外洩敏感資訊，並輸出適合人工複核與 CI 使用的遮罩報告。",
           homeAria: "leak-hunter 首頁",
           navAria: "主要導覽",
           languageAria: "選擇顯示語言",
-          commandsAria: "Repository 掃描指令",
+          commandsAria: "儲存庫掃描指令",
           heroAlt: "抽象資安掃描器視覺，包含程式碼網格深度、發光掃描軌跡與防禦式安全元素。",
           skip: "跳到主要內容",
-          brandSubtitle: "repo secret scanner",
+          brandSubtitle: "儲存庫敏感資訊掃描器",
           navFeatures: "功能",
           navReports: "報告",
           navInstall: "安裝",
           navGitHub: "GitHub",
           languageLabel: "語言",
-          badge: "Redaction-first CLI",
-          heroTitle: '在攻擊者之前<span class="hero-accent">找出外洩 secrets。</span>',
+          badge: "預設遮罩的命令列工具",
+          heroTitle: '在攻擊者之前<span class="hero-accent">找出外洩敏感資訊。</span>',
           heroCopy:
-            '<strong class="font-bold text-ivory">leak-hunter</strong> 會掃描本機資料夾與 GitHub repositories，找出疑似外洩 credentials，透過 context-aware risk model 排序 findings，並預設遮罩輸出。',
+            '<strong class="font-bold text-ivory">leak-hunter</strong> 會掃描本機資料夾與 GitHub 儲存庫，找出疑似外洩的憑證，透過情境感知風險模型排序偵測結果，並預設遮罩輸出。',
           installCta: "安裝掃描器",
           sourceCta: "查看原始碼",
           livePosture: "即時掃描姿態",
           targetsLabel: "目標：",
-          targetsValue: "本機路徑 + GitHub repos",
+          targetsValue: "本機路徑 + GitHub 儲存庫",
           reportsLabel: "報告：",
-          reportsValue: "text、JSON、Markdown",
+          reportsValue: "純文字、JSON、Markdown",
           defaultLabel: "預設：",
           defaultValue: "遮罩輸出",
           commandLocalLabel: "01 / 本機",
-          commandLocalDescription: "在 credentials 離開機器前，先稽核工作目錄。",
-          commandGitHubLabel: "02 / github",
-          commandGitHubDescription: "將 HTTPS、SSH 與 owner/repo GitHub targets 解析成暫存 clone。",
-          commandCiLabel: "03 / ci",
-          commandCiDescription: "輸出 machine-readable report，供 policy checks、dashboards 與 review bots 使用。",
+          commandLocalDescription: "在憑證離開機器前，先稽核工作目錄。",
+          commandGitHubLabel: "02 / GitHub",
+          commandGitHubDescription: "將 HTTPS、SSH 與 owner/repo GitHub 目標解析成暫存複本。",
+          commandCiLabel: "03 / CI",
+          commandCiDescription: "輸出機器可讀報告，供政策檢查、儀表板與審查機器人使用。",
           featuresKicker: "保護重點",
-          featuresTitle: "為 maintainers 打造的 scanner。",
-          featuresCopy: "Secret detection 如果忽略 context 就會很吵。leak-hunter 結合 pattern inventory、path awareness、risk scoring 與安全預設，讓團隊快速 triage 且不公開敏感值。",
-          featureRiskTitle: "Context-aware risk scoring",
-          featureRiskCopy: "Findings 會依 low 到 critical 排序，並根據 path、fixtures 與常見 false positives 加權或降權。",
-          featureRedactionTitle: "預設 Redaction",
-          featureRedactionCopy: "除非 reviewer 明確使用 <code>--no-redact</code> 進行本機人工複核，否則報告會遮罩 values。",
-          featureGithubTitle: "GitHub target 解析",
-          featureGithubCopy: "用單一 binary 掃描 repository URLs、<code>owner/repo</code> 簡寫、SSH remotes、branches 與 tags。",
-          featureReleaseTitle: "跨平台 release path",
-          featureReleaseCopy: "npm package 會安裝 native cargo-dist binary，並在使用前驗證 release checksums。",
+          featuresTitle: "為維護者打造的掃描器。",
+          featuresCopy: "敏感資訊偵測如果忽略情境就容易產生雜訊。leak-hunter 結合樣式規則庫、路徑判斷、風險評分與安全預設，讓團隊快速分流且不公開敏感值。",
+          featureRiskTitle: "情境感知風險評分",
+          featureRiskCopy: "偵測結果會依低風險到重大風險排序，並根據路徑、測試資料與常見誤判加權或降權。",
+          featureRedactionTitle: "預設遮罩",
+          featureRedactionCopy: "除非審查者明確使用 <code>--no-redact</code> 進行本機人工複核，否則報告會遮罩敏感值。",
+          featureGithubTitle: "GitHub 目標解析",
+          featureGithubCopy: "用單一執行檔掃描儲存庫網址、<code>owner/repo</code> 簡寫、SSH 遠端、分支與標籤。",
+          featureReleaseTitle: "跨平台發佈流程",
+          featureReleaseCopy: "npm 套件會安裝 cargo-dist 產生的原生執行檔，並在使用前驗證發佈檔校驗碼。",
           reportsKicker: "報告輸出",
-          reportsTitle: "人能讀，Bot 也能用。",
-          reportsCopy: "使用 text 在終端機複核、JSON 做 automation，或 Markdown 作為交接文件。Findings 會依風險排序，讓最高訊號的問題先浮現。",
-          reportSample: `Leak Hunter Report
+          reportsTitle: "人能讀，自動化也能用。",
+          reportsCopy: "使用純文字在終端機複核、JSON 做自動化，或 Markdown 作為交接文件。偵測結果會依風險排序，讓最重要的問題先浮現。",
+          reportSample: `Leak Hunter 報告
 ==================
-Target: github.com/doggy8088/leak-hunter
-Risk buckets: critical 0 / high 1 / medium 3
-Redaction: enabled
+目標: github.com/doggy8088/leak-hunter
+風險分類: 重大 0 / 高 1 / 中 3
+遮罩: 已啟用
 
-type             file                  risk
-cloud key        config/app.example    82
-db connection    src/settings.rs       64
-token-like value docs/example.md       41
+類型             檔案                  風險
+雲端金鑰         config/app.example    82
+資料庫連線       src/settings.rs       64
+疑似權杖值       docs/example.md       41
 
-value: <span class="redaction w-32"></span>
-next:  複核 context，若為真實值請輪替，並保持報告遮罩`,
+值: <span class="redaction w-32"></span>
+下一步: 複核情境，若為真實值請輪替，並保持報告遮罩`,
           installKicker: "安裝",
-          installTitle: "一行指令，native 速度。",
-          npmPackage: "npm package",
-          fromSource: "from source",
-          ciKicker: "CI 姿態",
+          installTitle: "一行指令，原生速度。",
+          npmPackage: "npm 套件",
+          fromSource: "從原始碼安裝",
+          ciKicker: "CI 防護",
           ciTitle: "讓報告安全到足以封存。",
-          ciCopy: "預設輸出會遮罩敏感值，讓 JSON 或 Markdown 報告更適合作為 CI artifacts 附件供後續 triage。",
+          ciCopy: "預設輸出會遮罩敏感值，讓 JSON 或 Markdown 報告更適合作為 CI 成品附件供後續分流。",
           quickStart: "閱讀快速開始",
-          footerCopy: "為防禦式安全流程打造。除非你明確指定，redaction 永遠保持開啟。",
+          footerCopy: "為防禦式安全流程打造。除非你明確指定，遮罩永遠保持開啟。",
           footerLink: "Will 保哥的技術交流中心",
         },
         "zh-CN": {
           htmlLang: "zh-Hans-CN",
           pageTitle: "leak-hunter — 本地优先的仓库敏感信息扫描器",
-          metaDescription: "leak-hunter 是跨平台 CLI，可扫描本地文件夹与 GitHub repository，找出疑似泄露的 secrets，并生成默认遮罩、适合 CI 保存的报告。",
+          metaDescription: "leak-hunter 是跨平台命令行工具，可扫描本地文件夹与 GitHub 仓库，找出疑似泄露的敏感信息，并生成默认脱敏、适合 CI 保存的报告。",
           ogLocale: "zh_CN",
-          ogTitle: "leak-hunter — 在攻击者之前找出泄露 secrets",
-          ogDescription: "本地优先的 repo secret scanner，默认 redaction，支持 GitHub target，并提供 JSON/Markdown CI 报告。",
+          ogTitle: "leak-hunter — 在攻击者之前找出泄露敏感信息",
+          ogDescription: "本地优先的仓库敏感信息扫描器，默认脱敏，支持 GitHub 目标，并提供适合 CI 的 JSON 与 Markdown 报告。",
           twitterTitle: "leak-hunter — 本地优先的仓库敏感信息扫描器",
-          twitterDescription: "扫描文件夹与 GitHub repositories 以找出疑似泄露 secrets，并输出适合人工和 CI 使用的遮罩报告。",
+          twitterDescription: "扫描文件夹与 GitHub 仓库以找出疑似泄露敏感信息，并输出适合人工复核与 CI 使用的脱敏报告。",
           homeAria: "leak-hunter 首页",
           navAria: "主要导航",
           languageAria: "选择显示语言",
-          commandsAria: "Repository 扫描命令",
+          commandsAria: "仓库扫描命令",
           heroAlt: "抽象网络安全扫描器视觉，包含代码网格深度、发光扫描轨迹与防御式安全元素。",
           skip: "跳到主要内容",
-          brandSubtitle: "repo secret scanner",
+          brandSubtitle: "仓库敏感信息扫描器",
           navFeatures: "功能",
           navReports: "报告",
           navInstall: "安装",
           navGitHub: "GitHub",
           languageLabel: "语言",
-          badge: "Redaction-first CLI",
-          heroTitle: '在攻击者之前<span class="hero-accent">找出泄露 secrets。</span>',
+          badge: "默认脱敏的命令行工具",
+          heroTitle: '在攻击者之前<span class="hero-accent">找出泄露敏感信息。</span>',
           heroCopy:
-            '<strong class="font-bold text-ivory">leak-hunter</strong> 会扫描本地文件夹与 GitHub repositories，找出疑似泄露 credentials，通过 context-aware risk model 排序 findings，并默认遮罩输出。',
+            '<strong class="font-bold text-ivory">leak-hunter</strong> 会扫描本地文件夹与 GitHub 仓库，找出疑似泄露的凭证，通过上下文感知风险模型排序检测结果，并默认脱敏输出。',
           installCta: "安装扫描器",
           sourceCta: "查看源码",
           livePosture: "实时扫描态势",
           targetsLabel: "目标：",
-          targetsValue: "本地路径 + GitHub repos",
+          targetsValue: "本地路径 + GitHub 仓库",
           reportsLabel: "报告：",
-          reportsValue: "text、JSON、Markdown",
+          reportsValue: "纯文本、JSON、Markdown",
           defaultLabel: "默认：",
-          defaultValue: "遮罩输出",
+          defaultValue: "脱敏输出",
           commandLocalLabel: "01 / 本地",
-          commandLocalDescription: "在 credentials 离开机器前先审计工作目录。",
-          commandGitHubLabel: "02 / github",
-          commandGitHubDescription: "将 HTTPS、SSH 与 owner/repo GitHub targets 解析成临时 clone。",
-          commandCiLabel: "03 / ci",
-          commandCiDescription: "输出 machine-readable report，供 policy checks、dashboards 与 review bots 使用。",
+          commandLocalDescription: "在凭证离开机器前先审计工作目录。",
+          commandGitHubLabel: "02 / GitHub",
+          commandGitHubDescription: "将 HTTPS、SSH 与 owner/repo GitHub 目标解析成临时副本。",
+          commandCiLabel: "03 / CI",
+          commandCiDescription: "输出机器可读报告，供策略检查、仪表盘与审查机器人使用。",
           featuresKicker: "保护重点",
-          featuresTitle: "为 maintainers 打造的 scanner。",
-          featuresCopy: "Secret detection 如果忽略 context 就会很吵。leak-hunter 结合 pattern inventory、path awareness、risk scoring 与安全默认值，让团队快速 triage 且不公开敏感值。",
-          featureRiskTitle: "Context-aware risk scoring",
-          featureRiskCopy: "Findings 会按 low 到 critical 排序，并根据 path、fixtures 与常见 false positives 加权或降权。",
-          featureRedactionTitle: "默认 Redaction",
-          featureRedactionCopy: "除非 reviewer 明确使用 <code>--no-redact</code> 进行本地人工复核，否则报告会遮罩 values。",
-          featureGithubTitle: "GitHub target 解析",
-          featureGithubCopy: "用单一 binary 扫描 repository URLs、<code>owner/repo</code> 简写、SSH remotes、branches 与 tags。",
-          featureReleaseTitle: "跨平台 release path",
-          featureReleaseCopy: "npm package 会安装 native cargo-dist binary，并在使用前验证 release checksums。",
+          featuresTitle: "为维护者打造的扫描器。",
+          featuresCopy: "敏感信息检测如果忽略上下文就容易产生噪声。leak-hunter 结合样式规则库、路径判断、风险评分与安全默认值，让团队快速分流且不公开敏感值。",
+          featureRiskTitle: "上下文感知风险评分",
+          featureRiskCopy: "检测结果会按低风险到严重风险排序，并根据路径、测试数据与常见误判加权或降权。",
+          featureRedactionTitle: "默认脱敏",
+          featureRedactionCopy: "除非审查者明确使用 <code>--no-redact</code> 进行本地人工复核，否则报告会隐藏敏感值。",
+          featureGithubTitle: "GitHub 目标解析",
+          featureGithubCopy: "用单一可执行文件扫描仓库网址、<code>owner/repo</code> 简写、SSH 远端、分支与标签。",
+          featureReleaseTitle: "跨平台发布流程",
+          featureReleaseCopy: "npm 包会安装 cargo-dist 生成的原生可执行文件，并在使用前验证发布文件校验码。",
           reportsKicker: "报告输出",
-          reportsTitle: "人可读，Bot 也可用。",
-          reportsCopy: "使用 text 在终端复核、JSON 做 automation，或 Markdown 作为交接文档。Findings 会按风险排序，让最高信号的问题先浮现。",
-          reportSample: `Leak Hunter Report
+          reportsTitle: "人可读，自动化也可用。",
+          reportsCopy: "使用纯文本在终端复核、JSON 做自动化，或 Markdown 作为交接文档。检测结果会按风险排序，让最重要的问题先浮现。",
+          reportSample: `Leak Hunter 报告
 ==================
-Target: github.com/doggy8088/leak-hunter
-Risk buckets: critical 0 / high 1 / medium 3
-Redaction: enabled
+目标: github.com/doggy8088/leak-hunter
+风险分类: 严重 0 / 高 1 / 中 3
+脱敏: 已启用
 
-type             file                  risk
-cloud key        config/app.example    82
-db connection    src/settings.rs       64
-token-like value docs/example.md       41
+类型             文件                  风险
+云端密钥         config/app.example    82
+数据库连接       src/settings.rs       64
+疑似令牌值       docs/example.md       41
 
-value: <span class="redaction w-32"></span>
-next:  复核 context，若为真实值请轮换，并保持报告遮罩`,
+值: <span class="redaction w-32"></span>
+下一步: 核对上下文，若为真实值请轮换，并保持报告脱敏`,
           installKicker: "安装",
-          installTitle: "一行命令，native 速度。",
-          npmPackage: "npm package",
-          fromSource: "from source",
-          ciKicker: "CI 态势",
+          installTitle: "一行命令，原生速度。",
+          npmPackage: "npm 包",
+          fromSource: "从源码安装",
+          ciKicker: "CI 防护",
           ciTitle: "让报告安全到足以归档。",
-          ciCopy: "默认输出会遮罩敏感值，让 JSON 或 Markdown 报告更适合作为 CI artifacts 附件供后续 triage。",
+          ciCopy: "默认输出会隐藏敏感值，让 JSON 或 Markdown 报告更适合作为 CI 构件附件供后续分流。",
           quickStart: "阅读快速开始",
-          footerCopy: "为防御式安全流程打造。除非你明确指定，redaction 永远保持开启。",
+          footerCopy: "为防御式安全流程打造。除非你明确指定，脱敏永远保持开启。",
           footerLink: "Will 保哥的技術交流中心",
         },
         ja: {
