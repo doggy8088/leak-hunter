@@ -6,6 +6,7 @@
     "leak-hunter": "npm/cli.cjs"
   },
   "scripts": {
+    "build:docs": "tailwindcss -i docs/src/styles.css -o docs/assets/site.css --minify",
     "postinstall": "node npm/postinstall.cjs",
     "test": "node --test tests/postinstall.test.cjs",
     "prepublishOnly": "npm test && npm pack --dry-run && node npm/prepublish-check.cjs"
@@ -14,7 +15,8 @@
     "npm/cli.cjs",
     "npm/postinstall.cjs",
     "npm/prepublish-check.cjs",
-    "README.md"
+    "README.md",
+    "README.*.md"
   ],
   "repository": {
     "type": "git",
@@ -26,5 +28,9 @@
     "cli"
   ],
   "author": "Will 保哥",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.0",
+    "tailwindcss": "^4.3.0"
+  }
 }

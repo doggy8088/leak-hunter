@@ -1,0 +1,1107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>leak-hunter — Local-first repository secret scanner</title>
+    <meta
+      name="description"
+      content="leak-hunter is a cross-platform CLI that scans local folders and GitHub repositories for likely leaked secrets with redacted, CI-ready reports."
+    />
+    <meta name="author" content="doggy8088" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#06100f" />
+    <link rel="canonical" href="https://doggy8088.github.io/leak-hunter/" />
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Noto+Sans+JP:wght@400;500;700;800&family=Noto+Sans+KR:wght@400;500;700;800&family=Noto+Sans+SC:wght@400;500;700;800&family=Noto+Sans+TC:wght@400;500;700;800&family=Noto+Sans+Thai:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./assets/site.css" />
+
+    <meta property="og:site_name" content="leak-hunter" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="leak-hunter — Find exposed secrets before attackers do" />
+    <meta
+      property="og:description"
+      content="A local-first repository secret scanner with redaction by default, GitHub target support, and JSON/Markdown reports for CI."
+    />
+    <meta property="og:url" content="https://doggy8088.github.io/leak-hunter/" />
+    <meta property="og:image" content="https://doggy8088.github.io/leak-hunter/assets/og-image.jpeg" />
+    <meta property="og:image:secure_url" content="https://doggy8088.github.io/leak-hunter/assets/og-image.jpeg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Decorative cybersecurity scanner artwork for leak-hunter." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="leak-hunter — Local-first repository secret scanner" />
+    <meta
+      name="twitter:description"
+      content="Scan folders and GitHub repositories for likely leaked secrets, then export redacted reports for humans and CI."
+    />
+    <meta name="twitter:image" content="https://doggy8088.github.io/leak-hunter/assets/og-image.jpeg" />
+    <meta name="twitter:image:alt" content="Decorative cybersecurity scanner artwork for leak-hunter." />
+  </head>
+  <body class="min-h-screen overflow-x-hidden bg-obsidian font-sans text-ivory antialiased selection:bg-radar/30">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-6 focus:top-6 focus:z-50 focus:rounded-full focus:bg-radar focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-obsidian"
+      data-i18n="skip"
+      >Skip to content</a
+    >
+
+    <div aria-hidden="true" class="noise-field pointer-events-none fixed inset-0 z-0"></div>
+    <div aria-hidden="true" class="pointer-events-none fixed inset-x-0 top-0 z-0 h-px bg-gradient-to-r from-transparent via-radar/80 to-transparent"></div>
+
+    <header class="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-5 py-6 sm:px-8 lg:px-10">
+      <a href="#top" class="group inline-flex items-center gap-3" data-i18n-attr="aria-label:homeAria">
+        <span class="grid size-11 place-items-center rounded-2xl border border-radar/30 bg-radar/10 shadow-[0_0_34px_rgba(29,242,206,0.22)]">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="size-6 text-radar">
+            <path
+              fill="currentColor"
+              d="M4 5h11v2H6v7h7v2H4V5Zm13.8 10.4 3.4 3.4-1.4 1.4-3.4-3.4a5.5 5.5 0 1 1 1.4-1.4ZM14 15a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+            />
+          </svg>
+        </span>
+        <span>
+          <span class="block text-sm font-extrabold tracking-[0.32em] text-ivory uppercase">leak-hunter</span>
+          <span class="hidden text-xs font-medium tracking-[0.22em] text-mist/75 uppercase sm:block" data-i18n="brandSubtitle">repository secret scanner</span>
+        </span>
+      </a>
+
+      <div class="flex items-center gap-3 sm:gap-5">
+        <nav
+          aria-label="Primary navigation"
+          data-i18n-attr="aria-label:navAria"
+          class="hidden items-center gap-7 text-xs font-bold tracking-[0.22em] text-mist uppercase md:flex"
+        >
+          <a class="hover:text-radar" href="#features" data-i18n="navFeatures">Features</a>
+          <a class="hover:text-radar" href="#reports" data-i18n="navReports">Reports</a>
+          <a class="hover:text-radar" href="#install" data-i18n="navInstall">Install</a>
+          <a class="hover:text-radar" href="https://github.com/doggy8088/leak-hunter" data-i18n="navGitHub">GitHub</a>
+        </nav>
+
+        <label class="language-control">
+          <span data-i18n="languageLabel">Language</span>
+          <select id="language-select" class="language-select" data-i18n-attr="aria-label:languageAria">
+            <option value="en">English</option>
+            <option value="zh-TW">繁體中文</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="vi">Tiếng Việt</option>
+            <option value="th">ไทย</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main id="main" class="relative z-10">
+      <section id="top" class="mx-auto grid w-full max-w-7xl gap-10 px-5 pb-20 pt-8 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:px-10 lg:pb-28 lg:pt-16">
+        <div class="flex flex-col justify-center">
+          <p class="mb-6 inline-flex w-fit items-center gap-3 rounded-full border border-radar/25 bg-radar/10 px-4 py-2 text-xs font-bold tracking-[0.24em] text-radar uppercase">
+            <span class="size-2 rounded-full bg-radar shadow-[0_0_18px_currentColor]"></span>
+            <span data-i18n="badge">Redaction-first CLI</span>
+          </p>
+          <h1 class="max-w-5xl font-display text-[clamp(4.2rem,13vw,10.5rem)] leading-[0.78] tracking-[-0.075em] text-ivory" data-i18n="heroTitle">
+            Find exposed secrets before attackers do.
+          </h1>
+          <p class="mt-8 max-w-2xl text-base leading-8 text-mist sm:text-lg" data-i18n="heroCopy">
+            <strong class="font-bold text-ivory">leak-hunter</strong> scans local folders and GitHub repositories for likely leaked credentials,
+            ranks findings with a context-aware risk model, and keeps output redacted by default.
+          </p>
+          <div class="mt-10 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="#install"
+              class="inline-flex items-center justify-center rounded-full bg-radar px-6 py-4 text-sm font-extrabold tracking-[0.14em] text-obsidian uppercase shadow-[0_18px_50px_rgba(29,242,206,0.22)] transition hover:-translate-y-0.5 hover:bg-ivory"
+              data-i18n="installCta"
+              >Install the scanner</a
+            >
+            <a
+              href="https://github.com/doggy8088/leak-hunter"
+              class="inline-flex items-center justify-center rounded-full border border-ivory/15 bg-ivory/5 px-6 py-4 text-sm font-extrabold tracking-[0.14em] text-ivory uppercase transition hover:-translate-y-0.5 hover:border-ember/60 hover:text-ember"
+              data-i18n="sourceCta"
+              >View source</a
+            >
+          </div>
+        </div>
+
+        <figure class="glass-panel terminal-scan relative min-h-[460px] overflow-hidden rounded-[2.4rem] p-3 lg:min-h-[640px]">
+          <img
+            src="./assets/leak-hunter-hero.jpeg"
+            width="1536"
+            height="1024"
+            alt="Abstract cybersecurity scanner artwork with code-grid depth, glowing scanner traces, and defensive security motifs."
+            data-i18n-attr="alt:heroAlt"
+            class="h-full min-h-[438px] w-full rounded-[1.9rem] object-cover object-center opacity-90 saturate-125 lg:min-h-[616px]"
+          />
+          <figcaption class="absolute bottom-7 left-7 right-7 rounded-3xl border border-ivory/10 bg-obsidian/78 p-5 text-xs text-mist backdrop-blur-xl">
+            <span class="mb-3 block font-bold tracking-[0.22em] text-radar uppercase" data-i18n="livePosture">Live scan posture</span>
+            <span class="grid gap-2 sm:grid-cols-3">
+              <span><span class="text-ivory" data-i18n="targetsLabel">Targets:</span> <span data-i18n="targetsValue">local paths + GitHub repos</span></span>
+              <span><span class="text-ivory" data-i18n="reportsLabel">Reports:</span> <span data-i18n="reportsValue">text, JSON, Markdown</span></span>
+              <span><span class="text-ivory" data-i18n="defaultLabel">Default:</span> <span data-i18n="defaultValue">redacted output</span></span>
+            </span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="mx-auto w-full max-w-7xl px-5 pb-20 sm:px-8 lg:px-10" aria-label="Repository scanning commands" data-i18n-attr="aria-label:commandsAria">
+        <div class="grid gap-4 lg:grid-cols-3">
+          <div class="glass-panel rounded-[2rem] p-6">
+            <p class="text-xs font-bold tracking-[0.24em] text-ember uppercase" data-i18n="commandLocalLabel">01 / local</p>
+            <code class="mt-5 block break-words text-lg font-bold text-ivory">leak-hunter .</code>
+            <p class="mt-4 text-sm leading-7 text-mist" data-i18n="commandLocalDescription">Audit a working tree before credentials leave the machine.</p>
+          </div>
+          <div class="glass-panel rounded-[2rem] p-6">
+            <p class="text-xs font-bold tracking-[0.24em] text-ember uppercase" data-i18n="commandGitHubLabel">02 / github</p>
+            <code class="mt-5 block break-words text-lg font-bold text-ivory">leak-hunter owner/repo</code>
+            <p class="mt-4 text-sm leading-7 text-mist" data-i18n="commandGitHubDescription">Resolve HTTPS, SSH, and shorthand GitHub targets into temporary clones.</p>
+          </div>
+          <div class="glass-panel rounded-[2rem] p-6">
+            <p class="text-xs font-bold tracking-[0.24em] text-ember uppercase" data-i18n="commandCiLabel">03 / ci</p>
+            <code class="mt-5 block break-words text-lg font-bold text-ivory">leak-hunter --json .</code>
+            <p class="mt-4 text-sm leading-7 text-mist" data-i18n="commandCiDescription">Emit machine-readable reports for policy checks, dashboards, and review bots.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="mx-auto w-full max-w-7xl px-5 py-20 sm:px-8 lg:px-10">
+        <div class="grid gap-10 lg:grid-cols-[0.72fr_1.28fr]">
+          <div>
+            <p class="text-xs font-bold tracking-[0.28em] text-radar uppercase" data-i18n="featuresKicker">What it protects</p>
+            <h2 class="mt-5 font-display text-6xl leading-none tracking-[-0.055em] text-ivory sm:text-7xl" data-i18n="featuresTitle">A scanner built for maintainers.</h2>
+            <p class="mt-6 text-base leading-8 text-mist" data-i18n="featuresCopy">
+              Secret detection is noisy when it ignores context. leak-hunter combines pattern inventory, path awareness, risk scoring, and safe defaults
+              so teams can triage quickly without publishing sensitive values.
+            </p>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2">
+            <article class="glass-panel rounded-[2rem] p-6">
+              <h3 class="text-lg font-extrabold text-ivory" data-i18n="featureRiskTitle">Context-aware risk scoring</h3>
+              <p class="mt-4 text-sm leading-7 text-mist" data-i18n="featureRiskCopy">Findings are ranked from low to critical with boosts and reductions for paths, fixtures, and common false positives.</p>
+            </article>
+            <article class="glass-panel rounded-[2rem] p-6">
+              <h3 class="text-lg font-extrabold text-ivory" data-i18n="featureRedactionTitle">Redaction by default</h3>
+              <p class="mt-4 text-sm leading-7 text-mist" data-i18n="featureRedactionCopy">Reports mask values unless a reviewer explicitly opts into local, manual inspection with <code>--no-redact</code>.</p>
+            </article>
+            <article class="glass-panel rounded-[2rem] p-6">
+              <h3 class="text-lg font-extrabold text-ivory" data-i18n="featureGithubTitle">GitHub target resolution</h3>
+              <p class="mt-4 text-sm leading-7 text-mist" data-i18n="featureGithubCopy">Scan repository URLs, <code>owner/repo</code> shorthand, SSH remotes, branches, and tags from one binary.</p>
+            </article>
+            <article class="glass-panel rounded-[2rem] p-6">
+              <h3 class="text-lg font-extrabold text-ivory" data-i18n="featureReleaseTitle">Cross-platform release path</h3>
+              <p class="mt-4 text-sm leading-7 text-mist" data-i18n="featureReleaseCopy">The npm package installs the native cargo-dist binary and verifies release checksums before use.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="reports" class="mx-auto w-full max-w-7xl px-5 py-20 sm:px-8 lg:px-10">
+        <div class="glass-panel overflow-hidden rounded-[2.4rem]">
+          <div class="grid lg:grid-cols-[0.9fr_1.1fr]">
+            <div class="border-b border-ivory/10 p-8 sm:p-10 lg:border-b-0 lg:border-r">
+              <p class="text-xs font-bold tracking-[0.28em] text-ember uppercase" data-i18n="reportsKicker">Report output</p>
+              <h2 class="mt-5 font-display text-6xl leading-none tracking-[-0.055em] text-ivory sm:text-7xl" data-i18n="reportsTitle">Human readable. Bot ready.</h2>
+              <p class="mt-6 text-base leading-8 text-mist" data-i18n="reportsCopy">
+                Use text for terminal review, JSON for automation, or Markdown for handoff documents. Findings stay sorted by risk so the highest-signal
+                issues surface first.
+              </p>
+            </div>
+            <div class="bg-black/45 p-5 sm:p-8">
+              <div class="rounded-[1.7rem] border border-radar/20 bg-obsidian/90 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <div class="mb-5 flex gap-2">
+                  <span class="size-3 rounded-full bg-alarm"></span>
+                  <span class="size-3 rounded-full bg-ember"></span>
+                  <span class="size-3 rounded-full bg-radar"></span>
+                </div>
+                <pre class="overflow-x-auto text-sm leading-7 text-mist"><code data-i18n="reportSample">Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  review context, rotate if real, keep report redacted</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install" class="mx-auto w-full max-w-7xl px-5 py-20 sm:px-8 lg:px-10">
+        <div class="grid gap-6 lg:grid-cols-[1fr_0.78fr]">
+          <div class="glass-panel rounded-[2.4rem] p-8 sm:p-10">
+            <p class="text-xs font-bold tracking-[0.28em] text-radar uppercase" data-i18n="installKicker">Install</p>
+            <h2 class="mt-5 font-display text-6xl leading-none tracking-[-0.055em] text-ivory sm:text-7xl" data-i18n="installTitle">One command, native speed.</h2>
+            <div class="mt-8 grid gap-4">
+              <div class="rounded-[1.5rem] border border-ivory/10 bg-black/40 p-5">
+                <p class="mb-3 text-xs font-bold tracking-[0.22em] text-ember uppercase" data-i18n="npmPackage">npm package</p>
+                <code class="break-words text-lg font-bold text-ivory">npm install -g leak-hunter</code>
+              </div>
+              <div class="rounded-[1.5rem] border border-ivory/10 bg-black/40 p-5">
+                <p class="mb-3 text-xs font-bold tracking-[0.22em] text-ember uppercase" data-i18n="fromSource">from source</p>
+                <code class="break-words text-lg font-bold text-ivory">cargo install --path .</code>
+              </div>
+            </div>
+          </div>
+
+          <aside class="glass-panel rounded-[2.4rem] p-8 sm:p-10">
+            <p class="text-xs font-bold tracking-[0.28em] text-ember uppercase" data-i18n="ciKicker">CI posture</p>
+            <h2 class="mt-5 text-3xl font-extrabold leading-tight text-ivory" data-i18n="ciTitle">Keep reports safe enough to archive.</h2>
+            <p class="mt-5 text-sm leading-7 text-mist" data-i18n="ciCopy">
+              The default output masks sensitive values, making it safer to attach JSON or Markdown reports to CI artifacts for follow-up triage.
+            </p>
+            <a
+              href="https://github.com/doggy8088/leak-hunter#quick-start"
+              class="mt-8 inline-flex items-center justify-center rounded-full bg-ivory px-5 py-3 text-xs font-extrabold tracking-[0.16em] text-obsidian uppercase transition hover:-translate-y-0.5 hover:bg-ember"
+              data-i18n="quickStart"
+              >Read quick start</a
+            >
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-4 px-5 pb-10 pt-8 text-sm text-mist sm:px-8 md:flex-row md:items-center md:justify-between lg:px-10">
+      <p data-i18n="footerCopy">Built for defensive security workflows. Redaction stays on unless you say otherwise.</p>
+      <a
+        href="https://www.facebook.com/will.fans/"
+        class="font-bold tracking-[0.2em] text-ivory transition hover:text-radar"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-i18n="footerLink"
+        >Will 保哥的技術交流中心</a
+      >
+    </footer>
+
+    <script>
+      const translations = {
+        en: {
+          htmlLang: "en",
+          pageTitle: "leak-hunter — Local-first repository secret scanner",
+          metaDescription:
+            "leak-hunter is a cross-platform CLI that scans local folders and GitHub repositories for likely leaked secrets with redacted, CI-ready reports.",
+          ogLocale: "en_US",
+          ogTitle: "leak-hunter — Find exposed secrets before attackers do",
+          ogDescription:
+            "A local-first repository secret scanner with redaction by default, GitHub target support, and JSON/Markdown reports for CI.",
+          twitterTitle: "leak-hunter — Local-first repository secret scanner",
+          twitterDescription:
+            "Scan folders and GitHub repositories for likely leaked secrets, then export redacted reports for humans and CI.",
+          homeAria: "leak-hunter home",
+          navAria: "Primary navigation",
+          languageAria: "Choose display language",
+          commandsAria: "Repository scanning commands",
+          heroAlt:
+            "Abstract cybersecurity scanner artwork with code-grid depth, glowing scanner traces, and defensive security motifs.",
+          skip: "Skip to content",
+          brandSubtitle: "repository secret scanner",
+          navFeatures: "Features",
+          navReports: "Reports",
+          navInstall: "Install",
+          navGitHub: "GitHub",
+          languageLabel: "Language",
+          badge: "Redaction-first CLI",
+          heroTitle: "Find exposed secrets before attackers do.",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong> scans local folders and GitHub repositories for likely leaked credentials, ranks findings with a context-aware risk model, and keeps output redacted by default.',
+          installCta: "Install the scanner",
+          sourceCta: "View source",
+          livePosture: "Live scan posture",
+          targetsLabel: "Targets:",
+          targetsValue: "local paths + GitHub repos",
+          reportsLabel: "Reports:",
+          reportsValue: "text, JSON, Markdown",
+          defaultLabel: "Default:",
+          defaultValue: "redacted output",
+          commandLocalLabel: "01 / local",
+          commandLocalDescription: "Audit a working tree before credentials leave the machine.",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "Resolve HTTPS, SSH, and shorthand GitHub targets into temporary clones.",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "Emit machine-readable reports for policy checks, dashboards, and review bots.",
+          featuresKicker: "What it protects",
+          featuresTitle: "A scanner built for maintainers.",
+          featuresCopy:
+            "Secret detection is noisy when it ignores context. leak-hunter combines pattern inventory, path awareness, risk scoring, and safe defaults so teams can triage quickly without publishing sensitive values.",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy:
+            "Findings are ranked from low to critical with boosts and reductions for paths, fixtures, and common false positives.",
+          featureRedactionTitle: "Redaction by default",
+          featureRedactionCopy:
+            "Reports mask values unless a reviewer explicitly opts into local, manual inspection with <code>--no-redact</code>.",
+          featureGithubTitle: "GitHub target resolution",
+          featureGithubCopy: "Scan repository URLs, <code>owner/repo</code> shorthand, SSH remotes, branches, and tags from one binary.",
+          featureReleaseTitle: "Cross-platform release path",
+          featureReleaseCopy: "The npm package installs the native cargo-dist binary and verifies release checksums before use.",
+          reportsKicker: "Report output",
+          reportsTitle: "Human readable. Bot ready.",
+          reportsCopy:
+            "Use text for terminal review, JSON for automation, or Markdown for handoff documents. Findings stay sorted by risk so the highest-signal issues surface first.",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  review context, rotate if real, keep report redacted`,
+          installKicker: "Install",
+          installTitle: "One command, native speed.",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "CI posture",
+          ciTitle: "Keep reports safe enough to archive.",
+          ciCopy: "The default output masks sensitive values, making it safer to attach JSON or Markdown reports to CI artifacts for follow-up triage.",
+          quickStart: "Read quick start",
+          footerCopy: "Built for defensive security workflows. Redaction stays on unless you say otherwise.",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+        "zh-TW": {
+          htmlLang: "zh-Hant-TW",
+          pageTitle: "leak-hunter — 本機優先的 Repo 敏感資訊掃描器",
+          metaDescription: "leak-hunter 是跨平台 CLI，可掃描本機資料夾與 GitHub repository，找出疑似外洩的 secrets，並產生預設遮罩、適合 CI 保存的報告。",
+          ogLocale: "zh_TW",
+          ogTitle: "leak-hunter — 在攻擊者之前找出外洩 secrets",
+          ogDescription: "本機優先的 repo secret scanner，預設 redaction，支援 GitHub target，並提供 JSON/Markdown CI 報告。",
+          twitterTitle: "leak-hunter — 本機優先的 Repo 敏感資訊掃描器",
+          twitterDescription: "掃描資料夾與 GitHub repositories 以找出疑似外洩 secrets，並輸出適合人類與 CI 使用的遮罩報告。",
+          homeAria: "leak-hunter 首頁",
+          navAria: "主要導覽",
+          languageAria: "選擇顯示語言",
+          commandsAria: "Repository 掃描指令",
+          heroAlt: "抽象資安掃描器視覺，包含程式碼網格深度、發光掃描軌跡與防禦式安全元素。",
+          skip: "跳到主要內容",
+          brandSubtitle: "repo secret scanner",
+          navFeatures: "功能",
+          navReports: "報告",
+          navInstall: "安裝",
+          navGitHub: "GitHub",
+          languageLabel: "語言",
+          badge: "Redaction-first CLI",
+          heroTitle: "在攻擊者之前找出外洩 secrets。",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong> 會掃描本機資料夾與 GitHub repositories，找出疑似外洩 credentials，透過 context-aware risk model 排序 findings，並預設遮罩輸出。',
+          installCta: "安裝掃描器",
+          sourceCta: "查看原始碼",
+          livePosture: "即時掃描姿態",
+          targetsLabel: "目標：",
+          targetsValue: "本機路徑 + GitHub repos",
+          reportsLabel: "報告：",
+          reportsValue: "text、JSON、Markdown",
+          defaultLabel: "預設：",
+          defaultValue: "遮罩輸出",
+          commandLocalLabel: "01 / 本機",
+          commandLocalDescription: "在 credentials 離開機器前，先稽核工作目錄。",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "將 HTTPS、SSH 與 owner/repo GitHub targets 解析成暫存 clone。",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "輸出 machine-readable report，供 policy checks、dashboards 與 review bots 使用。",
+          featuresKicker: "保護重點",
+          featuresTitle: "為 maintainers 打造的 scanner。",
+          featuresCopy: "Secret detection 如果忽略 context 就會很吵。leak-hunter 結合 pattern inventory、path awareness、risk scoring 與安全預設，讓團隊快速 triage 且不公開敏感值。",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy: "Findings 會依 low 到 critical 排序，並根據 path、fixtures 與常見 false positives 加權或降權。",
+          featureRedactionTitle: "預設 Redaction",
+          featureRedactionCopy: "除非 reviewer 明確使用 <code>--no-redact</code> 進行本機人工複核，否則報告會遮罩 values。",
+          featureGithubTitle: "GitHub target 解析",
+          featureGithubCopy: "用單一 binary 掃描 repository URLs、<code>owner/repo</code> 簡寫、SSH remotes、branches 與 tags。",
+          featureReleaseTitle: "跨平台 release path",
+          featureReleaseCopy: "npm package 會安裝 native cargo-dist binary，並在使用前驗證 release checksums。",
+          reportsKicker: "報告輸出",
+          reportsTitle: "人能讀，Bot 也能用。",
+          reportsCopy: "使用 text 在終端機複核、JSON 做 automation，或 Markdown 作為交接文件。Findings 會依風險排序，讓最高訊號的問題先浮現。",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  複核 context，若為真實值請輪替，並保持報告遮罩`,
+          installKicker: "安裝",
+          installTitle: "一行指令，native 速度。",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "CI 姿態",
+          ciTitle: "讓報告安全到足以封存。",
+          ciCopy: "預設輸出會遮罩敏感值，讓 JSON 或 Markdown 報告更適合作為 CI artifacts 附件供後續 triage。",
+          quickStart: "閱讀快速開始",
+          footerCopy: "為防禦式安全流程打造。除非你明確指定，redaction 永遠保持開啟。",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+        "zh-CN": {
+          htmlLang: "zh-Hans-CN",
+          pageTitle: "leak-hunter — 本地优先的仓库敏感信息扫描器",
+          metaDescription: "leak-hunter 是跨平台 CLI，可扫描本地文件夹与 GitHub repository，找出疑似泄露的 secrets，并生成默认遮罩、适合 CI 保存的报告。",
+          ogLocale: "zh_CN",
+          ogTitle: "leak-hunter — 在攻击者之前找出泄露 secrets",
+          ogDescription: "本地优先的 repo secret scanner，默认 redaction，支持 GitHub target，并提供 JSON/Markdown CI 报告。",
+          twitterTitle: "leak-hunter — 本地优先的仓库敏感信息扫描器",
+          twitterDescription: "扫描文件夹与 GitHub repositories 以找出疑似泄露 secrets，并输出适合人工和 CI 使用的遮罩报告。",
+          homeAria: "leak-hunter 首页",
+          navAria: "主要导航",
+          languageAria: "选择显示语言",
+          commandsAria: "Repository 扫描命令",
+          heroAlt: "抽象网络安全扫描器视觉，包含代码网格深度、发光扫描轨迹与防御式安全元素。",
+          skip: "跳到主要内容",
+          brandSubtitle: "repo secret scanner",
+          navFeatures: "功能",
+          navReports: "报告",
+          navInstall: "安装",
+          navGitHub: "GitHub",
+          languageLabel: "语言",
+          badge: "Redaction-first CLI",
+          heroTitle: "在攻击者之前找出泄露 secrets。",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong> 会扫描本地文件夹与 GitHub repositories，找出疑似泄露 credentials，通过 context-aware risk model 排序 findings，并默认遮罩输出。',
+          installCta: "安装扫描器",
+          sourceCta: "查看源码",
+          livePosture: "实时扫描态势",
+          targetsLabel: "目标：",
+          targetsValue: "本地路径 + GitHub repos",
+          reportsLabel: "报告：",
+          reportsValue: "text、JSON、Markdown",
+          defaultLabel: "默认：",
+          defaultValue: "遮罩输出",
+          commandLocalLabel: "01 / 本地",
+          commandLocalDescription: "在 credentials 离开机器前先审计工作目录。",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "将 HTTPS、SSH 与 owner/repo GitHub targets 解析成临时 clone。",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "输出 machine-readable report，供 policy checks、dashboards 与 review bots 使用。",
+          featuresKicker: "保护重点",
+          featuresTitle: "为 maintainers 打造的 scanner。",
+          featuresCopy: "Secret detection 如果忽略 context 就会很吵。leak-hunter 结合 pattern inventory、path awareness、risk scoring 与安全默认值，让团队快速 triage 且不公开敏感值。",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy: "Findings 会按 low 到 critical 排序，并根据 path、fixtures 与常见 false positives 加权或降权。",
+          featureRedactionTitle: "默认 Redaction",
+          featureRedactionCopy: "除非 reviewer 明确使用 <code>--no-redact</code> 进行本地人工复核，否则报告会遮罩 values。",
+          featureGithubTitle: "GitHub target 解析",
+          featureGithubCopy: "用单一 binary 扫描 repository URLs、<code>owner/repo</code> 简写、SSH remotes、branches 与 tags。",
+          featureReleaseTitle: "跨平台 release path",
+          featureReleaseCopy: "npm package 会安装 native cargo-dist binary，并在使用前验证 release checksums。",
+          reportsKicker: "报告输出",
+          reportsTitle: "人可读，Bot 也可用。",
+          reportsCopy: "使用 text 在终端复核、JSON 做 automation，或 Markdown 作为交接文档。Findings 会按风险排序，让最高信号的问题先浮现。",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  复核 context，若为真实值请轮换，并保持报告遮罩`,
+          installKicker: "安装",
+          installTitle: "一行命令，native 速度。",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "CI 态势",
+          ciTitle: "让报告安全到足以归档。",
+          ciCopy: "默认输出会遮罩敏感值，让 JSON 或 Markdown 报告更适合作为 CI artifacts 附件供后续 triage。",
+          quickStart: "阅读快速开始",
+          footerCopy: "为防御式安全流程打造。除非你明确指定，redaction 永远保持开启。",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+        ja: {
+          htmlLang: "ja",
+          pageTitle: "leak-hunter — ローカル優先のリポジトリ秘密情報スキャナー",
+          metaDescription: "leak-hunter はローカルフォルダーと GitHub repositories をスキャンし、疑わしい leaked secrets を既定で redact された CI 向けレポートとして出力するクロスプラットフォーム CLI です。",
+          ogLocale: "ja_JP",
+          ogTitle: "leak-hunter — 攻撃者より先に露出した secrets を見つける",
+          ogDescription: "ローカル優先の repository secret scanner。既定で redaction、GitHub target 対応、CI 向け JSON/Markdown reports を提供します。",
+          twitterTitle: "leak-hunter — ローカル優先のリポジトリ秘密情報スキャナー",
+          twitterDescription: "フォルダーと GitHub repositories をスキャンして疑わしい leaked secrets を検出し、人と CI に安全な redact 済みレポートを出力します。",
+          homeAria: "leak-hunter ホーム",
+          navAria: "メインナビゲーション",
+          languageAria: "表示言語を選択",
+          commandsAria: "Repository スキャンコマンド",
+          heroAlt: "コードグリッドの奥行き、光るスキャントレース、防御的セキュリティモチーフを備えた抽象的なサイバーセキュリティスキャナーアート。",
+          skip: "コンテンツへスキップ",
+          brandSubtitle: "repository secret scanner",
+          navFeatures: "機能",
+          navReports: "レポート",
+          navInstall: "インストール",
+          navGitHub: "GitHub",
+          languageLabel: "言語",
+          badge: "Redaction-first CLI",
+          heroTitle: "攻撃者より先に露出した secrets を見つける。",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong> はローカルフォルダーと GitHub repositories をスキャンして疑わしい credentials を検出し、context-aware risk model で findings を順位付けし、既定で出力を redact します。',
+          installCta: "スキャナーをインストール",
+          sourceCta: "ソースを見る",
+          livePosture: "ライブスキャン状態",
+          targetsLabel: "Targets:",
+          targetsValue: "ローカルパス + GitHub repos",
+          reportsLabel: "Reports:",
+          reportsValue: "text、JSON、Markdown",
+          defaultLabel: "Default:",
+          defaultValue: "redact 済み出力",
+          commandLocalLabel: "01 / local",
+          commandLocalDescription: "credentials がマシンを離れる前に working tree を監査します。",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "HTTPS、SSH、短縮形 GitHub targets を temporary clones に解決します。",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "policy checks、dashboards、review bots 向けに machine-readable reports を出力します。",
+          featuresKicker: "守るもの",
+          featuresTitle: "Maintainers のための scanner。",
+          featuresCopy: "Secret detection は context を無視すると noise が増えます。leak-hunter は pattern inventory、path awareness、risk scoring、安全な既定値を組み合わせ、敏感値を公開せずに素早く triage できます。",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy: "Findings は low から critical まで順位付けされ、paths、fixtures、一般的な false positives に応じて加点・減点されます。",
+          featureRedactionTitle: "既定で Redaction",
+          featureRedactionCopy: "Reviewer が <code>--no-redact</code> でローカル手動検査を明示的に選ばない限り、reports は values をマスクします。",
+          featureGithubTitle: "GitHub target 解決",
+          featureGithubCopy: "1 つの binary で repository URLs、<code>owner/repo</code> 短縮形、SSH remotes、branches、tags をスキャンできます。",
+          featureReleaseTitle: "クロスプラットフォーム release path",
+          featureReleaseCopy: "npm package は native cargo-dist binary をインストールし、使用前に release checksums を検証します。",
+          reportsKicker: "レポート出力",
+          reportsTitle: "人が読める。Bot も使える。",
+          reportsCopy: "Terminal review には text、automation には JSON、handoff documents には Markdown を使えます。Findings は risk 順に並び、重要な問題が先に表示されます。",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  context を確認し、本物なら rotate、report は redact のまま保持`,
+          installKicker: "インストール",
+          installTitle: "1 コマンドで native speed。",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "CI posture",
+          ciTitle: "アーカイブしても安全な report に。",
+          ciCopy: "既定の出力は敏感値をマスクするため、JSON や Markdown reports を CI artifacts に添付して後続 triage に使いやすくなります。",
+          quickStart: "クイックスタートを読む",
+          footerCopy: "防御的セキュリティ workflows のために構築。明示しない限り redaction は有効のままです。",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+        ko: {
+          htmlLang: "ko",
+          pageTitle: "leak-hunter — 로컬 우선 저장소 비밀 정보 스캐너",
+          metaDescription: "leak-hunter는 로컬 폴더와 GitHub repositories에서 의심되는 leaked secrets를 찾아 기본 redaction이 적용된 CI용 보고서를 만드는 크로스 플랫폼 CLI입니다.",
+          ogLocale: "ko_KR",
+          ogTitle: "leak-hunter — 공격자보다 먼저 노출된 secrets를 찾습니다",
+          ogDescription: "기본 redaction, GitHub target 지원, CI용 JSON/Markdown reports를 갖춘 로컬 우선 repository secret scanner입니다.",
+          twitterTitle: "leak-hunter — 로컬 우선 저장소 비밀 정보 스캐너",
+          twitterDescription: "폴더와 GitHub repositories에서 의심되는 leaked secrets를 스캔하고 사람과 CI에 안전한 redacted reports를 내보냅니다.",
+          homeAria: "leak-hunter 홈",
+          navAria: "기본 탐색",
+          languageAria: "표시 언어 선택",
+          commandsAria: "Repository 스캔 명령",
+          heroAlt: "코드 그리드 깊이, 빛나는 스캔 트레이스, 방어적 보안 모티프가 있는 추상 사이버 보안 스캐너 아트워크.",
+          skip: "본문으로 건너뛰기",
+          brandSubtitle: "repository secret scanner",
+          navFeatures: "기능",
+          navReports: "보고서",
+          navInstall: "설치",
+          navGitHub: "GitHub",
+          languageLabel: "언어",
+          badge: "Redaction-first CLI",
+          heroTitle: "공격자보다 먼저 노출된 secrets를 찾으세요.",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong>는 로컬 폴더와 GitHub repositories를 스캔해 의심되는 credentials를 찾고, context-aware risk model로 findings를 정렬하며, 기본적으로 출력을 redact합니다.',
+          installCta: "스캐너 설치",
+          sourceCta: "소스 보기",
+          livePosture: "실시간 스캔 상태",
+          targetsLabel: "Targets:",
+          targetsValue: "로컬 경로 + GitHub repos",
+          reportsLabel: "Reports:",
+          reportsValue: "text, JSON, Markdown",
+          defaultLabel: "Default:",
+          defaultValue: "redacted output",
+          commandLocalLabel: "01 / local",
+          commandLocalDescription: "credentials가 머신을 떠나기 전에 working tree를 점검합니다.",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "HTTPS, SSH, shorthand GitHub targets를 temporary clones로 해석합니다.",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "policy checks, dashboards, review bots를 위한 machine-readable reports를 출력합니다.",
+          featuresKicker: "보호 대상",
+          featuresTitle: "Maintainers를 위한 scanner.",
+          featuresCopy: "Secret detection은 context를 무시하면 noise가 많아집니다. leak-hunter는 pattern inventory, path awareness, risk scoring, 안전한 기본값을 결합해 민감한 값을 공개하지 않고 빠르게 triage할 수 있게 합니다.",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy: "Findings는 low부터 critical까지 정렬되며 paths, fixtures, 일반적인 false positives에 따라 가중치가 조정됩니다.",
+          featureRedactionTitle: "기본 Redaction",
+          featureRedactionCopy: "Reviewer가 <code>--no-redact</code>로 로컬 수동 검토를 명시적으로 선택하지 않는 한 reports는 values를 마스킹합니다.",
+          featureGithubTitle: "GitHub target 해석",
+          featureGithubCopy: "하나의 binary로 repository URLs, <code>owner/repo</code> shorthand, SSH remotes, branches, tags를 스캔합니다.",
+          featureReleaseTitle: "크로스 플랫폼 release path",
+          featureReleaseCopy: "npm package는 native cargo-dist binary를 설치하고 사용 전에 release checksums를 검증합니다.",
+          reportsKicker: "보고서 출력",
+          reportsTitle: "사람도 읽고 Bot도 사용합니다.",
+          reportsCopy: "터미널 검토에는 text, automation에는 JSON, handoff documents에는 Markdown을 사용하세요. Findings는 risk 순으로 정렬되어 중요한 문제가 먼저 나타납니다.",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  context 검토, 실제 값이면 rotate, report는 redacted 상태 유지`,
+          installKicker: "설치",
+          installTitle: "한 줄 명령, native speed.",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "CI posture",
+          ciTitle: "보관해도 안전한 reports.",
+          ciCopy: "기본 출력은 민감한 값을 마스킹하므로 JSON 또는 Markdown reports를 CI artifacts에 첨부해 후속 triage에 사용하기 더 안전합니다.",
+          quickStart: "빠른 시작 읽기",
+          footerCopy: "방어적 보안 workflows를 위해 제작되었습니다. 명시하지 않는 한 redaction은 계속 켜져 있습니다.",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+        vi: {
+          htmlLang: "vi",
+          pageTitle: "leak-hunter — Trình quét bí mật repository ưu tiên cục bộ",
+          metaDescription: "leak-hunter là CLI đa nền tảng quét thư mục cục bộ và GitHub repositories để tìm secrets nghi bị lộ, với báo cáo mặc định được redact và sẵn sàng cho CI.",
+          ogLocale: "vi_VN",
+          ogTitle: "leak-hunter — Tìm secrets bị lộ trước kẻ tấn công",
+          ogDescription: "Repository secret scanner ưu tiên cục bộ, mặc định redaction, hỗ trợ GitHub target và báo cáo JSON/Markdown cho CI.",
+          twitterTitle: "leak-hunter — Trình quét bí mật repository ưu tiên cục bộ",
+          twitterDescription: "Quét thư mục và GitHub repositories để tìm leaked secrets khả nghi, rồi xuất redacted reports cho con người và CI.",
+          homeAria: "Trang chủ leak-hunter",
+          navAria: "Điều hướng chính",
+          languageAria: "Chọn ngôn ngữ hiển thị",
+          commandsAria: "Lệnh quét repository",
+          heroAlt: "Artwork scanner an ninh mạng trừu tượng với lưới mã, vệt quét phát sáng và motif phòng thủ.",
+          skip: "Bỏ qua tới nội dung",
+          brandSubtitle: "repository secret scanner",
+          navFeatures: "Tính năng",
+          navReports: "Báo cáo",
+          navInstall: "Cài đặt",
+          navGitHub: "GitHub",
+          languageLabel: "Ngôn ngữ",
+          badge: "Redaction-first CLI",
+          heroTitle: "Tìm secrets bị lộ trước kẻ tấn công.",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong> quét thư mục cục bộ và GitHub repositories để tìm credentials có khả năng bị lộ, xếp hạng findings bằng context-aware risk model và mặc định redact output.',
+          installCta: "Cài scanner",
+          sourceCta: "Xem source",
+          livePosture: "Trạng thái quét trực tiếp",
+          targetsLabel: "Targets:",
+          targetsValue: "đường dẫn cục bộ + GitHub repos",
+          reportsLabel: "Reports:",
+          reportsValue: "text, JSON, Markdown",
+          defaultLabel: "Default:",
+          defaultValue: "redacted output",
+          commandLocalLabel: "01 / local",
+          commandLocalDescription: "Audit working tree trước khi credentials rời khỏi máy.",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "Resolve HTTPS, SSH và shorthand GitHub targets thành temporary clones.",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "Xuất machine-readable reports cho policy checks, dashboards và review bots.",
+          featuresKicker: "Nội dung được bảo vệ",
+          featuresTitle: "Scanner dành cho maintainers.",
+          featuresCopy: "Secret detection sẽ rất nhiễu nếu bỏ qua context. leak-hunter kết hợp pattern inventory, path awareness, risk scoring và safe defaults để team triage nhanh mà không công bố giá trị nhạy cảm.",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy: "Findings được xếp từ low đến critical, có boosts và reductions theo paths, fixtures và false positives phổ biến.",
+          featureRedactionTitle: "Redaction mặc định",
+          featureRedactionCopy: "Reports sẽ mask values trừ khi reviewer chủ động chọn kiểm tra thủ công cục bộ với <code>--no-redact</code>.",
+          featureGithubTitle: "GitHub target resolution",
+          featureGithubCopy: "Scan repository URLs, shorthand <code>owner/repo</code>, SSH remotes, branches và tags từ một binary.",
+          featureReleaseTitle: "Cross-platform release path",
+          featureReleaseCopy: "npm package cài native cargo-dist binary và xác minh release checksums trước khi dùng.",
+          reportsKicker: "Report output",
+          reportsTitle: "Người đọc được. Bot dùng được.",
+          reportsCopy: "Dùng text để review trong terminal, JSON cho automation hoặc Markdown cho handoff documents. Findings được sắp theo risk để vấn đề có tín hiệu cao nhất hiện trước.",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  review context, rotate nếu là thật, giữ report đã redact`,
+          installKicker: "Cài đặt",
+          installTitle: "Một lệnh, tốc độ native.",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "CI posture",
+          ciTitle: "Giữ reports đủ an toàn để lưu trữ.",
+          ciCopy: "Output mặc định mask giá trị nhạy cảm, giúp đính kèm JSON hoặc Markdown reports vào CI artifacts an toàn hơn cho triage sau đó.",
+          quickStart: "Đọc quick start",
+          footerCopy: "Được xây dựng cho defensive security workflows. Redaction luôn bật trừ khi bạn yêu cầu khác.",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+        th: {
+          htmlLang: "th",
+          pageTitle: "leak-hunter — เครื่องมือสแกน secrets ใน repository แบบ local-first",
+          metaDescription: "leak-hunter คือ CLI ข้ามแพลตฟอร์มที่สแกนโฟลเดอร์ภายในเครื่องและ GitHub repositories เพื่อหา secrets ที่อาจรั่ว พร้อมรายงานที่ redact เป็นค่าเริ่มต้นและเหมาะกับ CI",
+          ogLocale: "th_TH",
+          ogTitle: "leak-hunter — หา secrets ที่เปิดเผยก่อนผู้โจมตี",
+          ogDescription: "Repository secret scanner แบบ local-first ที่เปิด redaction เป็นค่าเริ่มต้น รองรับ GitHub target และ JSON/Markdown reports สำหรับ CI",
+          twitterTitle: "leak-hunter — เครื่องมือสแกน secrets ใน repository แบบ local-first",
+          twitterDescription: "สแกน folders และ GitHub repositories เพื่อหา leaked secrets ที่น่าสงสัย แล้วส่งออก redacted reports สำหรับคนและ CI",
+          homeAria: "หน้าแรก leak-hunter",
+          navAria: "การนำทางหลัก",
+          languageAria: "เลือกภาษาที่แสดง",
+          commandsAria: "คำสั่งสแกน repository",
+          heroAlt: "ภาพ artwork scanner ด้าน cybersecurity แบบนามธรรม พร้อม code-grid, scanner traces เรืองแสง และ motif ด้าน defensive security",
+          skip: "ข้ามไปยังเนื้อหา",
+          brandSubtitle: "repository secret scanner",
+          navFeatures: "ฟีเจอร์",
+          navReports: "รายงาน",
+          navInstall: "ติดตั้ง",
+          navGitHub: "GitHub",
+          languageLabel: "ภาษา",
+          badge: "Redaction-first CLI",
+          heroTitle: "หา secrets ที่เปิดเผยก่อนผู้โจมตี.",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong> สแกนโฟลเดอร์ในเครื่องและ GitHub repositories เพื่อหา credentials ที่อาจรั่ว จัดอันดับ findings ด้วย context-aware risk model และ redact output เป็นค่าเริ่มต้น',
+          installCta: "ติดตั้ง scanner",
+          sourceCta: "ดู source",
+          livePosture: "สถานะสแกนสด",
+          targetsLabel: "Targets:",
+          targetsValue: "local paths + GitHub repos",
+          reportsLabel: "Reports:",
+          reportsValue: "text, JSON, Markdown",
+          defaultLabel: "Default:",
+          defaultValue: "redacted output",
+          commandLocalLabel: "01 / local",
+          commandLocalDescription: "Audit working tree ก่อนที่ credentials จะออกจากเครื่อง",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "Resolve HTTPS, SSH และ shorthand GitHub targets เป็น temporary clones",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "ส่งออก machine-readable reports สำหรับ policy checks, dashboards และ review bots",
+          featuresKicker: "สิ่งที่ปกป้อง",
+          featuresTitle: "Scanner สำหรับ maintainers.",
+          featuresCopy: "Secret detection จะมี noise สูงเมื่อไม่สนใจ context leak-hunter รวม pattern inventory, path awareness, risk scoring และ safe defaults เพื่อให้ทีม triage ได้เร็วโดยไม่เผยแพร่ค่าที่อ่อนไหว",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy: "Findings ถูกจัดอันดับจาก low ถึง critical พร้อม boosts และ reductions ตาม paths, fixtures และ false positives ที่พบบ่อย",
+          featureRedactionTitle: "Redaction เป็นค่าเริ่มต้น",
+          featureRedactionCopy: "Reports จะ mask values เว้นแต่ reviewer เลือกตรวจสอบด้วยตนเองบนเครื่องอย่างชัดเจนด้วย <code>--no-redact</code>",
+          featureGithubTitle: "GitHub target resolution",
+          featureGithubCopy: "Scan repository URLs, shorthand <code>owner/repo</code>, SSH remotes, branches และ tags จาก binary เดียว",
+          featureReleaseTitle: "Cross-platform release path",
+          featureReleaseCopy: "npm package ติดตั้ง native cargo-dist binary และตรวจสอบ release checksums ก่อนใช้งาน",
+          reportsKicker: "Report output",
+          reportsTitle: "คนอ่านได้ Bot ก็ใช้ได้.",
+          reportsCopy: "ใช้ text สำหรับ terminal review, JSON สำหรับ automation หรือ Markdown สำหรับ handoff documents Findings จะเรียงตาม risk เพื่อให้ปัญหาที่ signal สูงสุดแสดงก่อน",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  review context, rotate ถ้าเป็นค่าจริง, เก็บ report แบบ redacted`,
+          installKicker: "ติดตั้ง",
+          installTitle: "คำสั่งเดียว ความเร็วแบบ native.",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "CI posture",
+          ciTitle: "ทำให้ reports ปลอดภัยพอสำหรับ archive.",
+          ciCopy: "Output เริ่มต้นจะ mask ค่าที่อ่อนไหว ทำให้แนบ JSON หรือ Markdown reports เป็น CI artifacts เพื่อ triage ต่อได้ปลอดภัยขึ้น",
+          quickStart: "อ่าน quick start",
+          footerCopy: "สร้างสำหรับ defensive security workflows Redaction จะเปิดอยู่เสมอเว้นแต่คุณสั่งเป็นอย่างอื่น",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+        fr: {
+          htmlLang: "fr",
+          pageTitle: "leak-hunter — Scanner de secrets local-first pour repositories",
+          metaDescription: "leak-hunter est un CLI multiplateforme qui scanne dossiers locaux et GitHub repositories pour détecter des secrets probablement exposés avec des rapports redacted prêts pour la CI.",
+          ogLocale: "fr_FR",
+          ogTitle: "leak-hunter — Trouvez les secrets exposés avant les attaquants",
+          ogDescription: "Un repository secret scanner local-first avec redaction par défaut, support GitHub target et rapports JSON/Markdown pour la CI.",
+          twitterTitle: "leak-hunter — Scanner de secrets local-first pour repositories",
+          twitterDescription: "Scannez dossiers et GitHub repositories pour trouver des leaked secrets probables, puis exportez des redacted reports pour humains et CI.",
+          homeAria: "Accueil leak-hunter",
+          navAria: "Navigation principale",
+          languageAria: "Choisir la langue d'affichage",
+          commandsAria: "Commandes de scan repository",
+          heroAlt: "Illustration abstraite de scanner cybersécurité avec profondeur code-grid, traces lumineuses et motifs de sécurité défensive.",
+          skip: "Aller au contenu",
+          brandSubtitle: "repository secret scanner",
+          navFeatures: "Fonctions",
+          navReports: "Rapports",
+          navInstall: "Installer",
+          navGitHub: "GitHub",
+          languageLabel: "Langue",
+          badge: "Redaction-first CLI",
+          heroTitle: "Trouvez les secrets exposés avant les attaquants.",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong> scanne les dossiers locaux et GitHub repositories pour repérer des credentials probablement exposés, classe les findings avec un context-aware risk model et garde la sortie redacted par défaut.',
+          installCta: "Installer le scanner",
+          sourceCta: "Voir le code",
+          livePosture: "Posture de scan en direct",
+          targetsLabel: "Targets :",
+          targetsValue: "chemins locaux + GitHub repos",
+          reportsLabel: "Reports :",
+          reportsValue: "text, JSON, Markdown",
+          defaultLabel: "Défaut :",
+          defaultValue: "sortie redacted",
+          commandLocalLabel: "01 / local",
+          commandLocalDescription: "Auditez un working tree avant que les credentials quittent la machine.",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "Résolvez les GitHub targets HTTPS, SSH et shorthand en temporary clones.",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "Émettez des machine-readable reports pour policy checks, dashboards et review bots.",
+          featuresKicker: "Ce qu'il protège",
+          featuresTitle: "Un scanner pour maintainers.",
+          featuresCopy: "La secret detection devient bruyante sans contexte. leak-hunter combine pattern inventory, path awareness, risk scoring et safe defaults pour aider les équipes à triage rapidement sans publier de valeurs sensibles.",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy: "Les findings sont classés de low à critical avec boosts et reductions pour paths, fixtures et false positives fréquents.",
+          featureRedactionTitle: "Redaction par défaut",
+          featureRedactionCopy: "Les reports masquent les values sauf si un reviewer choisit explicitement une inspection manuelle locale avec <code>--no-redact</code>.",
+          featureGithubTitle: "Résolution GitHub target",
+          featureGithubCopy: "Scannez repository URLs, shorthand <code>owner/repo</code>, SSH remotes, branches et tags depuis un seul binary.",
+          featureReleaseTitle: "Release path multiplateforme",
+          featureReleaseCopy: "Le npm package installe le native cargo-dist binary et vérifie les release checksums avant usage.",
+          reportsKicker: "Sortie de rapport",
+          reportsTitle: "Lisible humain. Prêt bot.",
+          reportsCopy: "Utilisez text pour la revue terminal, JSON pour automation ou Markdown pour handoff documents. Les findings restent triés par risk afin de faire remonter les signaux forts.",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  revoir le context, rotate si réel, garder le report redacted`,
+          installKicker: "Installation",
+          installTitle: "Une commande, vitesse native.",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "Posture CI",
+          ciTitle: "Des reports assez sûrs pour être archivés.",
+          ciCopy: "La sortie par défaut masque les valeurs sensibles, ce qui rend plus sûr l'attachement de JSON ou Markdown reports aux CI artifacts pour triage.",
+          quickStart: "Lire le quick start",
+          footerCopy: "Conçu pour les workflows de sécurité défensive. Redaction reste activée sauf indication contraire.",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+        de: {
+          htmlLang: "de",
+          pageTitle: "leak-hunter — Lokal ausgerichteter Repository-Secret-Scanner",
+          metaDescription: "leak-hunter ist ein plattformübergreifendes CLI, das lokale Ordner und GitHub repositories auf wahrscheinlich geleakte secrets scannt und redacted, CI-fähige Berichte ausgibt.",
+          ogLocale: "de_DE",
+          ogTitle: "leak-hunter — Finden Sie offengelegte secrets vor Angreifern",
+          ogDescription: "Ein lokal ausgerichteter repository secret scanner mit redaction standardmäßig, GitHub target support und JSON/Markdown reports für CI.",
+          twitterTitle: "leak-hunter — Lokal ausgerichteter Repository-Secret-Scanner",
+          twitterDescription: "Scannen Sie Ordner und GitHub repositories nach wahrscheinlichen leaked secrets und exportieren Sie redacted reports für Menschen und CI.",
+          homeAria: "leak-hunter Startseite",
+          navAria: "Hauptnavigation",
+          languageAria: "Anzeigesprache wählen",
+          commandsAria: "Repository-Scanbefehle",
+          heroAlt: "Abstrakte Cybersecurity-Scanner-Grafik mit Code-Grid-Tiefe, leuchtenden Scanner-Spuren und defensiven Security-Motiven.",
+          skip: "Zum Inhalt springen",
+          brandSubtitle: "repository secret scanner",
+          navFeatures: "Funktionen",
+          navReports: "Berichte",
+          navInstall: "Installieren",
+          navGitHub: "GitHub",
+          languageLabel: "Sprache",
+          badge: "Redaction-first CLI",
+          heroTitle: "Finden Sie offengelegte secrets vor Angreifern.",
+          heroCopy:
+            '<strong class="font-bold text-ivory">leak-hunter</strong> scannt lokale Ordner und GitHub repositories nach wahrscheinlich geleakten credentials, sortiert findings mit einem context-aware risk model und hält Ausgaben standardmäßig redacted.',
+          installCta: "Scanner installieren",
+          sourceCta: "Source ansehen",
+          livePosture: "Live-Scan-Posture",
+          targetsLabel: "Targets:",
+          targetsValue: "lokale Pfade + GitHub repos",
+          reportsLabel: "Reports:",
+          reportsValue: "text, JSON, Markdown",
+          defaultLabel: "Standard:",
+          defaultValue: "redacted output",
+          commandLocalLabel: "01 / local",
+          commandLocalDescription: "Prüfen Sie einen working tree, bevor credentials die Maschine verlassen.",
+          commandGitHubLabel: "02 / github",
+          commandGitHubDescription: "Lösen Sie HTTPS-, SSH- und shorthand GitHub targets in temporary clones auf.",
+          commandCiLabel: "03 / ci",
+          commandCiDescription: "Erzeugen Sie machine-readable reports für policy checks, dashboards und review bots.",
+          featuresKicker: "Was geschützt wird",
+          featuresTitle: "Ein scanner für maintainers.",
+          featuresCopy: "Secret detection wird laut, wenn context fehlt. leak-hunter verbindet pattern inventory, path awareness, risk scoring und safe defaults, damit Teams schnell triage können, ohne sensitive values zu veröffentlichen.",
+          featureRiskTitle: "Context-aware risk scoring",
+          featureRiskCopy: "Findings werden von low bis critical eingestuft, mit boosts und reductions für paths, fixtures und häufige false positives.",
+          featureRedactionTitle: "Redaction standardmäßig",
+          featureRedactionCopy: "Reports maskieren values, außer ein reviewer entscheidet sich explizit für lokale manuelle Prüfung mit <code>--no-redact</code>.",
+          featureGithubTitle: "GitHub target resolution",
+          featureGithubCopy: "Scannen Sie repository URLs, <code>owner/repo</code>-shorthand, SSH remotes, branches und tags mit einem binary.",
+          featureReleaseTitle: "Cross-platform release path",
+          featureReleaseCopy: "Das npm package installiert das native cargo-dist binary und verifiziert release checksums vor der Nutzung.",
+          reportsKicker: "Report output",
+          reportsTitle: "Für Menschen lesbar. Für Bots bereit.",
+          reportsCopy: "Nutzen Sie text für Terminal Review, JSON für automation oder Markdown für handoff documents. Findings bleiben nach risk sortiert, damit die stärksten Signale zuerst erscheinen.",
+          reportSample: `Leak Hunter Report
+==================
+Target: github.com/doggy8088/leak-hunter
+Risk buckets: critical 0 / high 1 / medium 3
+Redaction: enabled
+
+type             file                  risk
+cloud key        config/app.example    82
+db connection    src/settings.rs       64
+token-like value docs/example.md       41
+
+value: <span class="redaction w-32"></span>
+next:  context prüfen, bei Echtheit rotieren, report redacted halten`,
+          installKicker: "Installation",
+          installTitle: "Ein Befehl, native speed.",
+          npmPackage: "npm package",
+          fromSource: "from source",
+          ciKicker: "CI posture",
+          ciTitle: "Reports sicher genug zum Archivieren.",
+          ciCopy: "Die Standardausgabe maskiert sensitive values, sodass JSON- oder Markdown reports sicherer als CI artifacts für spätere triage angehängt werden können.",
+          quickStart: "Quick start lesen",
+          footerCopy: "Gebaut für defensive security workflows. Redaction bleibt aktiv, außer Sie entscheiden anders.",
+          footerLink: "Will 保哥的技術交流中心",
+        },
+      };
+
+      const supportedLanguages = Object.keys(translations);
+      const aliases = {
+        zh: "zh-TW",
+        "zh-hant": "zh-TW",
+        "zh-hant-tw": "zh-TW",
+        "zh-tw": "zh-TW",
+        "zh-hans": "zh-CN",
+        "zh-hans-cn": "zh-CN",
+        "zh-cn": "zh-CN",
+        ja: "ja",
+        "ja-jp": "ja",
+        ko: "ko",
+        "ko-kr": "ko",
+        vi: "vi",
+        "vi-vn": "vi",
+        th: "th",
+        "th-th": "th",
+        fr: "fr",
+        "fr-fr": "fr",
+        de: "de",
+        "de-de": "de",
+        en: "en",
+        "en-us": "en",
+        "en-gb": "en",
+      };
+
+      const select = document.querySelector("#language-select");
+      const textTargets = document.querySelectorAll("[data-i18n]");
+      const attrTargets = document.querySelectorAll("[data-i18n-attr]");
+      const metadataTargets = [
+        { selector: 'meta[name="description"]', attr: "content", key: "metaDescription" },
+        { selector: 'meta[property="og:locale"]', attr: "content", key: "ogLocale" },
+        { selector: 'meta[property="og:title"]', attr: "content", key: "ogTitle" },
+        { selector: 'meta[property="og:description"]', attr: "content", key: "ogDescription" },
+        { selector: 'meta[property="og:image:alt"]', attr: "content", key: "heroAlt" },
+        { selector: 'meta[name="twitter:title"]', attr: "content", key: "twitterTitle" },
+        { selector: 'meta[name="twitter:description"]', attr: "content", key: "twitterDescription" },
+        { selector: 'meta[name="twitter:image:alt"]', attr: "content", key: "heroAlt" },
+      ];
+
+      function normalizeLanguage(language) {
+        if (!language) {
+          return null;
+        }
+
+        const normalized = language.toLowerCase();
+        return supportedLanguages.find((code) => code.toLowerCase() === normalized) || aliases[normalized] || null;
+      }
+
+      function languageFromNavigator() {
+        const browserLanguages = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+        return browserLanguages.map(normalizeLanguage).find(Boolean);
+      }
+
+      function applyLanguage(language) {
+        const code = normalizeLanguage(language) || "en";
+        const dictionary = translations[code];
+
+        document.documentElement.lang = dictionary.htmlLang;
+        document.title = dictionary.pageTitle;
+
+        textTargets.forEach((element) => {
+          const key = element.dataset.i18n;
+          if (dictionary[key]) {
+            element.innerHTML = dictionary[key];
+          }
+        });
+
+        attrTargets.forEach((element) => {
+          element.dataset.i18nAttr.split(",").forEach((entry) => {
+            const [attr, key] = entry.split(":");
+            if (dictionary[key]) {
+              element.setAttribute(attr, dictionary[key]);
+            }
+          });
+        });
+
+        metadataTargets.forEach(({ selector, attr, key }) => {
+          const element = document.querySelector(selector);
+          if (element && dictionary[key]) {
+            element.setAttribute(attr, dictionary[key]);
+          }
+        });
+
+        select.value = code;
+        localStorage.setItem("leakHunterLanguage", code);
+      }
+
+      const requestedLanguage = new URLSearchParams(window.location.search).get("lang");
+      const initialLanguage =
+        normalizeLanguage(requestedLanguage) || normalizeLanguage(localStorage.getItem("leakHunterLanguage")) || languageFromNavigator() || "en";
+
+      applyLanguage(initialLanguage);
+
+      select.addEventListener("change", (event) => {
+        const code = event.target.value;
+        applyLanguage(code);
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("lang", code);
+        window.history.replaceState(null, "", url);
+      });
+    </script>
+  </body>
+</html>

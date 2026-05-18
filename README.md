@@ -4,9 +4,11 @@
   <img src="docs/assets/leak-hunter-banner.png" alt="leak-hunter repository secret scanner banner" width="100%">
 </p>
 
-`leak-hunter` 是一套以本機執行為優先的防禦型 Repo 敏感資訊掃描 CLI。它提供單一跨平台 binary，可掃描 GitHub repository URL、`owner/repo` 簡寫、GitHub SSH target，或本機資料夾，並輸出 Text、JSON、Markdown 報告。
+**Languages:** [English](README.md) | [繁體中文](README.zh-tw.md) | [简体中文](README.zh-cn.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Tiếng Việt](README.vi.md) | [ไทย](README.th.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
 
-Rust crate 是唯一的核心實作；npm package `leak-hunter` 是 thin wrapper，用來安裝並執行 GitHub Release 內由 cargo-dist 產生的 native binary。
+`leak-hunter` is a local-first defensive repository secret-scanning CLI. It ships as a single cross-platform binary that scans GitHub repository URLs, `owner/repo` shorthand, GitHub SSH targets, or local folders, then emits Text, JSON, or Markdown reports.
+
+The Rust crate is the only core implementation. The npm package `leak-hunter` is a thin wrapper that installs and runs the native binary produced by cargo-dist in GitHub Releases.
 
 ## Install
 
@@ -14,7 +16,7 @@ Rust crate 是唯一的核心實作；npm package `leak-hunter` 是 thin wrapper
 cargo install --path .
 ```
 
-或使用 npm package：
+Or install the npm package:
 
 ```bash
 npm install -g leak-hunter
@@ -29,7 +31,7 @@ leak-hunter --json --min-risk 50 .
 leak-hunter --format markdown --output leak-hunter-report.md owner/repo
 ```
 
-GitHub target 支援：
+Supported GitHub targets:
 
 ```bash
 leak-hunter https://github.com/doggy8088/holidaybook
@@ -42,85 +44,71 @@ leak-hunter git@github.com:doggy8088/holidaybook.git
 
 | Option | Description |
 |---|---|
-| `--json` | 輸出 machine-readable JSON，等同 JSON report shortcut |
-| `--format <text\|json\|markdown>` | 選擇報告格式 |
-| `--output <path>` | 將報告寫入檔案；必要時自動建立父目錄 |
-| `--min-risk <0-100>` | 只顯示達到風險門檻的 findings |
-| `--include <glob>` / `--exclude <glob>` | 限制掃描範圍，可重複指定 |
-| `--no-default-exclude` | 關閉內建排除規則 |
-| `--max-file-size-mb <n>` | 單檔掃描大小上限 |
-| `--concurrency <n>` | 並行掃描檔案數 |
-| `--no-redact` | 輸出原文 secret；僅限本機人工複核 |
-| `--keep-temp` | 保留 GitHub target 的暫存 clone |
-| `--cache-dir <dir>` | 指定 GitHub 暫存 clone 目錄，預設 `.leak-hunter-cache` |
-| `--branch <name>` | 掃描指定 branch 或 tag |
-| `--debug` | 將掃描決策、候選 finding 分數與 min-risk 篩選原因輸出到 stderr |
-| `-v, --version` | 顯示版本資訊 |
+| `--json` | Output machine-readable JSON; shortcut for JSON reports. |
+| `--format <text\|json\|markdown>` | Choose the report format. |
+| `--output <path>` | Write the report to a file and create parent directories when needed. |
+| `--min-risk <0-100>` | Show only findings at or above the risk threshold. |
+| `--include <glob>` / `--exclude <glob>` | Limit scan scope; can be repeated. |
+| `--no-default-exclude` | Disable built-in exclusion rules. |
+| `--max-file-size-mb <n>` | Set the per-file scan size limit. |
+| `--concurrency <n>` | Set how many files are scanned in parallel. |
+| `--no-redact` | Output raw secret values; use only for local manual review. |
+| `--keep-temp` | Keep temporary clones for GitHub targets. |
+| `--cache-dir <dir>` | Set the GitHub temporary clone directory; default is `.leak-hunter-cache`. |
+| `--branch <name>` | Scan a specific branch or tag. |
+| `--debug` | Print scan decisions, candidate scores, and min-risk filtering reasons to stderr. |
+| `-v, --version` | Print version information. |
 
-`--json` 與明確指定的 `--format` 互斥，以避免 CI 腳本產生模稜兩可的輸出。
+`--json` and an explicit `--format` are mutually exclusive so CI scripts do not produce ambiguous output.
 
-## Text report
+## Reports
 
-適合直接在終端機閱讀：
+Text reports are designed for direct terminal review:
 
 ```bash
 leak-hunter . --format text
 ```
 
-內容會以 Leak Hunter ASCII banner 開場，並包含 target、實際掃描 root、掃描時間、掃描與略過檔案數、finding 數、風險 bucket、redaction 狀態與 finding 表格。
+The report starts with the Leak Hunter ASCII banner and includes the target, resolved scan root, scan time, scanned and skipped file counts, finding count, risk buckets, redaction status, and a finding table.
 
-```text
- _                _      _   _             _
-| |    ___  __ _| | __ | | | |_   _ _ __ | |_ ___ _ __
-| |   / _ \/ _` | |/ / | |_| | | | | '_ \| __/ _ \ '__|
-| |__|  __/ (_| |   <  |  _  | |_| | | | | ||  __/ |
-|_____\___|\__,_|_|\_\ |_| |_|\__,_|_| |_|\__\___|_|
-        Find exposed secrets before attackers do.
-
-Leak Hunter Report
-==================
-```
-
-## JSON report
-
-適合 CI 保存、後續 `jq` 處理或匯入其他系統：
+JSON reports are better for CI artifacts, `jq` processing, and system integrations:
 
 ```bash
 leak-hunter . --json --output leak-hunter-report.json
 ```
 
-範例查詢高風險 finding：
+Example query for high-risk findings:
 
 ```bash
 leak-hunter . --json \
   | jq '.findings[] | select(.riskScore >= 75) | {type, filePath, lineNumber, riskScore}'
 ```
 
-## 掃描策略
+## Scan strategy
 
-1. 解析本機或 GitHub target。
-2. GitHub repository 會 clone 到 `.leak-hunter-cache` 或 `--cache-dir` 指定目錄。
-3. 使用 gitignore-aware walker 與 include / exclude glob。
-4. 略過 binary 或超過大小上限的檔案。
-5. 套用內建 pattern inventory 與 context-aware risk model。
-6. 對 package-lock npm integrity hashes、Firebase public API key context、docs/example 等常見 noise 降噪。
-7. 預設 redaction，依風險分數、路徑與位置排序輸出。
-8. 清除 GitHub 暫存 clone，除非使用 `--keep-temp`。
+1. Resolve the local or GitHub target.
+2. Clone GitHub repositories into `.leak-hunter-cache` or the directory specified by `--cache-dir`.
+3. Walk files with gitignore-aware include / exclude glob handling.
+4. Skip binary files or files above the configured size limit.
+5. Apply the built-in pattern inventory and context-aware risk model.
+6. Reduce common noise from npm integrity hashes in package-lock files, Firebase public API key context, and docs/example paths.
+7. Redact by default, then sort output by risk score, path, and position.
+8. Remove temporary GitHub clones unless `--keep-temp` is set.
 
 ## Detection highlights
 
-目前重建的 rules 包含：
+The current rebuilt rules cover:
 
-- OpenAI、Google API Key、GitHub Token、Stripe、Slack、Sentry、Docker Hub PAT
+- OpenAI, Google API keys, GitHub tokens, Stripe, Slack, Sentry, and Docker Hub PATs
 - AWS access key / secret key pairing
-- Azure Storage connection string / AccountKey / SAS URI
-- Popular framework app secrets，例如 Django、Flask、Rails、Laravel、NextAuth、Nuxt、Spring、ASP.NET 等
-- Database connection strings and URIs，例如 SQL Server-style connection string、PostgreSQL、MongoDB、Redis
-- JWT、PEM private key、GCP service account JSON、Google OAuth client secret
+- Azure Storage connection strings, AccountKeys, and SAS URIs
+- Popular framework app secrets such as Django, Flask, Rails, Laravel, NextAuth, Nuxt, Spring, and ASP.NET
+- Database connection strings and URIs, including SQL Server-style connection strings, PostgreSQL, MongoDB, and Redis
+- JWTs, PEM private keys, GCP service account JSON, and Google OAuth client secrets
 
-## npm package 與 checksum
+## npm package and checksums
 
-`npm/postinstall.cjs` 會依平台對應 cargo-dist target，下載 release archive 與對應 `.sha256`，驗證 SHA-256 後才解壓縮並安裝 native binary。npm 發佈使用 Trusted Publishing / OIDC，不使用長期 `NPM_TOKEN`。發布前的 `prepublishOnly` 會先跑 npm 測試、`npm pack --dry-run`，並確認所有 release archive 與 checksum 都已存在。
+`npm/postinstall.cjs` maps the current platform to a cargo-dist target, downloads the release archive and matching `.sha256` file, verifies the SHA-256 checksum, then extracts and installs the native binary. npm publishing uses Trusted Publishing / OIDC instead of a long-lived `NPM_TOKEN`. Before publish, `prepublishOnly` runs npm tests, `npm pack --dry-run`, and verifies that every release archive and checksum exists.
 
 ## Development
 
@@ -132,7 +120,7 @@ npm test
 npm pack --dry-run
 ```
 
-Self-scan：
+Self-scan:
 
 ```bash
 cargo run --quiet -- --json --min-risk 40 . \
