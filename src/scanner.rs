@@ -1,0 +1,412 @@
+use crate::patterns::{is_likely_placeholder, SECRET_PATTERNS};
+use anyhow::{Context, Result};
+use globset::{Glob, GlobSet, GlobSetBuilder};
+use ignore::WalkBuilder;
+use rayon::prelude::*;
+use serde::Serialize;
+use sha2::{Digest, Sha256};
+use std::fs;
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone)]
+pub struct ScanOptions {
+    pub include: Vec<String>,
+    pub exclude: Vec<String>,
+    pub default_exclude: bool,
+    pub min_risk: u8,
+    pub max_file_size_bytes: u64,
+    pub concurrency: usize,
+    pub redact: bool,
+    pub debug: bool,
+}
+
+#[derive(Debug, Default, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanSummary {
+    pub files_enumerated: usize,
+    pub files_scanned: usize,
+    pub findings: usize,
+    pub skipped: usize,
+    pub skipped_binary: usize,
+    pub skipped_too_large: usize,
+    pub skipped_unreadable: usize,
+    pub concurrency: usize,
+    pub max_file_size_bytes: u64,
+    pub min_risk: u8,
+    pub redact: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Finding {
+    #[serde(rename = "type")]
+    pub finding_type: String,
+    pub title: String,
+    pub file_path: String,
+    pub line_number: usize,
+    pub column_number: usize,
+    pub risk_score: u8,
+    pub secret_hash: String,
+    pub secret: String,
+    pub snippet: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkippedFile {
+    pub file_path: String,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanResult {
+    pub summary: ScanSummary,
+    pub findings: Vec<Finding>,
+    pub skipped: Vec<SkippedFile>,
+}
+
+struct FileOutcome {
+    scanned: bool,
+    skipped: Option<SkippedFile>,
+    findings: Vec<Finding>,
+}
+
+const DEFAULT_EXCLUDES: &[&str] = &[
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/.next/**",
+    "**/.nuxt/**",
+    "**/.cache/**",
+    "**/.leak-hunter-cache/**",
+    "**/vendor/**",
+    "target/**",
+    "**/target/**",
+];
+
+pub fn scan_path(root: &Path, options: &ScanOptions) -> Result<ScanResult> {
+    let include = build_globset(&options.include)?;
+    let mut excludes = options.exclude.clone();
+    if options.default_exclude {
+        excludes.extend(DEFAULT_EXCLUDES.iter().map(|s| s.to_string()));
+    }
+    let exclude = build_globset(&excludes)?;
+
+    if options.debug {
+        eprintln!(
+            "scan options: include={:?} exclude={:?} min_risk={} redact={}",
+            options.include, excludes, options.min_risk, options.redact
+        );
+    }
+
+    let files: Vec<PathBuf> = WalkBuilder::new(root)
+        .hidden(false)
+        .git_ignore(options.default_exclude)
+        .git_exclude(options.default_exclude)
+        .parents(options.default_exclude)
+        .build()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_type().map(|ft| ft.is_file()).unwrap_or(false))
+        .filter_map(|entry| {
+            let path = entry.into_path();
+            let rel = path.strip_prefix(root).unwrap_or(&path);
+            if let Some(set) = &include {
+                if !set.is_match(rel) {
+                    return None;
+                }
+            }
+            if exclude
+                .as_ref()
+                .map(|set| set.is_match(rel))
+                .unwrap_or(false)
+            {
+                return None;
+            }
+            Some(path)
+        })
+        .collect();
+
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(options.concurrency)
+        .build()
+        .context("Unable to create scanner thread pool")?;
+
+    let outcomes = pool.install(|| {
+        files
+            .par_iter()
+            .map(|path| scan_file(root, path, options))
+            .collect::<Vec<_>>()
+    });
+
+    let mut summary = ScanSummary {
+        files_enumerated: files.len(),
+        concurrency: options.concurrency,
+        max_file_size_bytes: options.max_file_size_bytes,
+        min_risk: options.min_risk,
+        redact: options.redact,
+        ..ScanSummary::default()
+    };
+    let mut findings = Vec::new();
+    let mut skipped = Vec::new();
+
+    for outcome in outcomes {
+        if outcome.scanned {
+            summary.files_scanned += 1;
+        }
+        if let Some(skipped_file) = outcome.skipped {
+            match skipped_file.reason.as_str() {
+                "binary" => summary.skipped_binary += 1,
+                "too_large" => summary.skipped_too_large += 1,
+                "unreadable" | "read_error" => summary.skipped_unreadable += 1,
+                _ => {}
+            }
+            skipped.push(skipped_file);
+        }
+        findings.extend(outcome.findings);
+    }
+
+    findings.sort_by(|a, b| {
+        b.risk_score
+            .cmp(&a.risk_score)
+            .then_with(|| a.file_path.cmp(&b.file_path))
+            .then_with(|| a.line_number.cmp(&b.line_number))
+    });
+    summary.findings = findings.len();
+    summary.skipped = skipped.len();
+
+    Ok(ScanResult {
+        summary,
+        findings,
+        skipped,
+    })
+}
+
+fn build_globset(patterns: &[String]) -> Result<Option<GlobSet>> {
+    if patterns.is_empty() {
+        return Ok(None);
+    }
+    let mut builder = GlobSetBuilder::new();
+    for pattern in patterns {
+        builder.add(Glob::new(pattern).with_context(|| format!("invalid glob: {pattern}"))?);
+    }
+    Ok(Some(
+        builder.build().context("Unable to build glob matcher")?,
+    ))
+}
+
+fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
+    let rel = path
+        .strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/");
+    let metadata = match fs::metadata(path) {
+        Ok(metadata) => metadata,
+        Err(_) => {
+            return FileOutcome {
+                scanned: false,
+                skipped: Some(SkippedFile {
+                    file_path: rel,
+                    reason: "unreadable".into(),
+                }),
+                findings: vec![],
+            }
+        }
+    };
+
+    if metadata.len() > options.max_file_size_bytes {
+        return FileOutcome {
+            scanned: false,
+            skipped: Some(SkippedFile {
+                file_path: rel,
+                reason: "too_large".into(),
+            }),
+            findings: vec![],
+        };
+    }
+
+    let bytes = match fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return FileOutcome {
+                scanned: false,
+                skipped: Some(SkippedFile {
+                    file_path: rel,
+                    reason: "read_error".into(),
+                }),
+                findings: vec![],
+            }
+        }
+    };
+
+    if is_binary(&bytes) {
+        return FileOutcome {
+            scanned: false,
+            skipped: Some(SkippedFile {
+                file_path: rel,
+                reason: "binary".into(),
+            }),
+            findings: vec![],
+        };
+    }
+
+    let text = String::from_utf8_lossy(&bytes);
+    if options.debug {
+        eprintln!("scan file: {rel}");
+    }
+    let mut findings = Vec::new();
+    for pattern in SECRET_PATTERNS.iter() {
+        for caps in pattern.regex.captures_iter(&text) {
+            let m = caps.name("secret").or_else(|| caps.get(0));
+            let Some(secret_match) = m else { continue };
+            let secret = secret_match.as_str();
+            if should_suppress(&rel, &text, secret) {
+                continue;
+            }
+            let risk = risk_score(pattern.base_risk, secret, &rel, &text);
+            if risk < options.min_risk {
+                continue;
+            }
+            let (line, column) = line_column(&text, secret_match.start());
+            let snippet = line_snippet(&text, line, options.redact, secret);
+            findings.push(Finding {
+                finding_type: pattern.id.to_string(),
+                title: pattern.title.to_string(),
+                file_path: rel.clone(),
+                line_number: line,
+                column_number: column,
+                risk_score: risk,
+                secret_hash: secret_hash(secret),
+                secret: if options.redact {
+                    redact_secret(secret)
+                } else {
+                    secret.to_string()
+                },
+                snippet,
+            });
+        }
+    }
+
+    FileOutcome {
+        scanned: true,
+        skipped: None,
+        findings,
+    }
+}
+
+fn is_binary(bytes: &[u8]) -> bool {
+    bytes.iter().take(8192).any(|b| *b == 0)
+}
+
+fn should_suppress(file_path: &str, text: &str, secret: &str) -> bool {
+    let lower = file_path.to_ascii_lowercase();
+    if is_likely_placeholder(secret) {
+        return true;
+    }
+    if lower.ends_with("package-lock.json") && text.contains("\"integrity\"") {
+        return true;
+    }
+    if lower.contains("readme")
+        || lower.contains("docs/")
+        || lower.contains("documentation")
+        || lower.contains("guide")
+    {
+        if secret.contains("example") || secret.contains("sample") || secret.contains("dummy") {
+            return true;
+        }
+    }
+    false
+}
+
+fn risk_score(base: u8, secret: &str, file_path: &str, text: &str) -> u8 {
+    let mut score = i16::from(base);
+    let lower_path = file_path.to_ascii_lowercase();
+    if lower_path.ends_with(".env") || lower_path.contains(".env.") {
+        score += 8;
+    }
+    if lower_path.contains("config")
+        || lower_path.contains("settings")
+        || lower_path.contains("workflow")
+    {
+        score += 5;
+    }
+    if lower_path.contains("readme") || lower_path.contains("docs/") {
+        score -= 25;
+    }
+    if entropy(secret) < 3.0 && secret.len() < 24 {
+        score -= 20;
+    }
+    if text.to_ascii_lowercase().contains("public key")
+        || text.to_ascii_lowercase().contains("certificate")
+    {
+        score -= 10;
+    }
+    score.clamp(0, 100) as u8
+}
+
+fn entropy(value: &str) -> f64 {
+    if value.is_empty() {
+        return 0.0;
+    }
+    let mut counts = std::collections::HashMap::new();
+    for b in value.bytes() {
+        *counts.entry(b).or_insert(0usize) += 1;
+    }
+    let len = value.len() as f64;
+    counts.values().fold(0.0, |acc, count| {
+        let p = *count as f64 / len;
+        acc - p * p.log2()
+    })
+}
+
+fn line_column(text: &str, byte_offset: usize) -> (usize, usize) {
+    let prefix = &text[..byte_offset.min(text.len())];
+    let line = prefix.bytes().filter(|b| *b == b'\n').count() + 1;
+    let last_newline = prefix.rfind('\n').map(|idx| idx + 1).unwrap_or(0);
+    let column = prefix[last_newline..].chars().count() + 1;
+    (line, column)
+}
+
+fn line_snippet(text: &str, line_number: usize, redact: bool, secret: &str) -> String {
+    let line = text
+        .lines()
+        .nth(line_number.saturating_sub(1))
+        .unwrap_or_default()
+        .trim();
+    let snippet = if redact {
+        line.replace(secret, &redact_secret(secret))
+    } else {
+        line.to_string()
+    };
+    if snippet.chars().count() > 220 {
+        snippet.chars().take(220).collect::<String>() + "…"
+    } else {
+        snippet
+    }
+}
+
+pub fn secret_hash(secret: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(secret.as_bytes());
+    let digest = hasher.finalize();
+    format!("sha256:{}", hex::encode(&digest[..8]))
+}
+
+pub fn redact_secret(secret: &str) -> String {
+    if secret.len() <= 8 {
+        return "[REDACTED]".to_string();
+    }
+    let start: String = secret.chars().take(4).collect();
+    let end: String = secret
+        .chars()
+        .rev()
+        .take(4)
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect();
+    format!("{start}…{end}")
+}

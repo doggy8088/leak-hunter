@@ -1,0 +1,7 @@
+/target/
+/node_modules/
+/.leak-hunter-cache/
+/npm/leak-hunter-bin/
+.DS_Store
+*.log
+pi-session-*.html
