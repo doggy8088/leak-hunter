@@ -30,6 +30,7 @@
 - 重大破壞性變更必須在 type/scope 後加 `!`，或在 footer 使用 `BREAKING CHANGE: <description>`；這類 commit 對應 SemVer major。
 - Body 可選，需與 header 空一行，用來說明動機、背景與行為差異，不重述 diff。
 - Footer 可選，需與 body 空一行；issue 連結使用 `Refs: #123` 或 `Closes: #123`。
+- 多行 commit message 必須使用真實換行字元分隔 header、body 與 footer；不要把字面量 `\n` 寫進 commit message 或 git log。
 - 每個 commit 聚焦單一邏輯變更；不要把不相關修改混在同一個 commit。
 - Commit 前確認不要納入未請求或使用者既有的 unrelated changes。
 
