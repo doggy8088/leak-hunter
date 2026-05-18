@@ -3,13 +3,14 @@ use crate::scanner::{scan_path, ScanOptions};
 use crate::target::{resolve_target, TargetOptions};
 use anyhow::{bail, Context, Result};
 use chrono::Utc;
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(
     name = "leak-hunter",
-    version,
+    version = env!("CARGO_PKG_VERSION"),
+    disable_version_flag = true,
     about = "Scan local paths or GitHub repositories for likely leaked secrets."
 )]
 pub struct Cli {
@@ -18,11 +19,11 @@ pub struct Cli {
     pub target: String,
 
     /// include glob; repeatable
-    #[arg(short = 'i', long = "include")]
+    #[arg(short = 'i', long = "include", action = ArgAction::Append)]
     pub include: Vec<String>,
 
     /// exclude glob; repeatable
-    #[arg(short = 'x', long = "exclude")]
+    #[arg(short = 'x', long = "exclude", action = ArgAction::Append)]
     pub exclude: Vec<String>,
 
     /// disable built-in excludes such as .git, node_modules, and build outputs
@@ -34,7 +35,7 @@ pub struct Cli {
     pub format: OutputFormat,
 
     /// output JSON report for tool integrations
-    #[arg(long = "json", default_value_t = false)]
+    #[arg(long = "json", action = ArgAction::SetTrue, conflicts_with = "format")]
     pub json: bool,
 
     /// write report to a file instead of stdout
@@ -76,9 +77,17 @@ pub struct Cli {
     /// print debug details about scan decisions to stderr
     #[arg(long = "debug", default_value_t = false)]
     pub debug: bool,
+
+    /// print version information
+    #[arg(short = 'v', long = "version", action = ArgAction::SetTrue)]
+    pub version: bool,
 }
 
 pub fn run(cli: Cli) -> Result<i32> {
+    if cli.version {
+        println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        return Ok(0);
+    }
     validate(&cli)?;
     let format = if cli.json {
         OutputFormat::Json
@@ -88,7 +97,8 @@ pub fn run(cli: Cli) -> Result<i32> {
     let redact = !cli.no_redact;
 
     if cli.debug {
-        eprintln!("start scan");
+        eprintln!("[debug] selected report format: {format:?}");
+        eprintln!("[debug] start scan");
     }
 
     let mut target = resolve_target(
@@ -114,7 +124,7 @@ pub fn run(cli: Cli) -> Result<i32> {
     let scan = scan_path(&target.info.path, &scan_options)?;
 
     if cli.debug {
-        eprintln!("cleanup temporary target if required");
+        eprintln!("[debug] cleanup temporary target if required");
     }
     target.cleanup();
 
@@ -122,6 +132,10 @@ pub fn run(cli: Cli) -> Result<i32> {
     let output = format_report(format, &report)?;
 
     if let Some(path) = cli.output {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create {}", parent.display()))?;
+        }
         std::fs::write(&path, output)
             .with_context(|| format!("failed to write {}", path.display()))?;
         if !redact {

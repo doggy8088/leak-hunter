@@ -31,9 +31,19 @@ pub fn format_report(format: OutputFormat, report: &Report<'_>) -> Result<String
     }
 }
 
+fn text_banner() -> &'static str {
+    r#" _                _      _   _             _            
+| |    ___  __ _| | __ | | | |_   _ _ __ | |_ ___ _ __ 
+| |   / _ \/ _` | |/ / | |_| | | | | '_ \| __/ _ \ '__|
+| |__|  __/ (_| |   <  |  _  | |_| | | | | ||  __/ |   
+|_____\___|\__,_|_|\_\ |_| |_|\__,_|_| |_|\__\___|_|   
+        Find exposed secrets before attackers do."#
+}
+
 fn text_report(report: &Report<'_>) -> String {
     let mut out = String::new();
-    out.push_str("Leak Hunter Report\n");
+    out.push_str(text_banner());
+    out.push_str("\n\nLeak Hunter Report\n");
     out.push_str("==================\n\n");
     out.push_str(&format!("Target: {}\n", report.target.input));
     out.push_str(&format!("Root: {}\n", report.root.display()));
@@ -103,8 +113,8 @@ fn markdown_report(report: &Report<'_>) -> String {
     out.push_str("## Risk Buckets\n\n| Bucket | Range | Count |\n|---|---:|---:|\n");
     out.push_str(&format!("| Critical | 90-100 | {critical} |\n"));
     out.push_str(&format!("| High | 75-89 | {high} |\n"));
-    out.push_str(&format!("| Medium | 40-74 | {medium} |\n"));
-    out.push_str(&format!("| Low | 0-39 | {low} |\n\n"));
+    out.push_str(&format!("| Medium | 50-74 | {medium} |\n"));
+    out.push_str(&format!("| Low | 0-49 | {low} |\n\n"));
 
     out.push_str("## Findings\n\n");
     if report.findings.is_empty() {
@@ -135,7 +145,7 @@ fn buckets(findings: &[Finding]) -> (usize, usize, usize, usize) {
         match finding.risk_score {
             90..=100 => acc.0 += 1,
             75..=89 => acc.1 += 1,
-            40..=74 => acc.2 += 1,
+            50..=74 => acc.2 += 1,
             _ => acc.3 += 1,
         }
         acc
@@ -146,13 +156,18 @@ fn risk_label(score: u8) -> &'static str {
     match score {
         90..=100 => "Critical",
         75..=89 => "High",
-        40..=74 => "Medium",
+        50..=74 => "Medium",
         _ => "Low",
     }
 }
 
 fn escape_md(value: &str) -> String {
-    value.replace('|', "\\|").replace('`', "\\`")
+    value
+        .replace('\\', "\\\\")
+        .replace('|', "\\|")
+        .replace('`', "\\`")
+        .replace("\r\n", "\n")
+        .replace('\n', "<br>")
 }
 
 pub fn report_from_scan<'a>(

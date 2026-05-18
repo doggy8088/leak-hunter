@@ -1,5 +1,4 @@
 use anyhow::{bail, Context, Result};
-use dirs::cache_dir;
 use regex::Regex;
 use serde::Serialize;
 use sha1::{Digest, Sha1};
@@ -49,7 +48,13 @@ impl ResolvedTarget {
                     cleaned: false,
                     reason: "kept".into(),
                 };
-            } else if fs::remove_dir_all(&self.info.path).is_ok() {
+            } else if self
+                .info
+                .path
+                .components()
+                .any(|c| c.as_os_str() == ".leak-hunter-cache")
+                && fs::remove_dir_all(&self.info.path).is_ok()
+            {
                 self.info.cleanup = CleanupStatus {
                     cleaned: true,
                     reason: "removed".into(),
@@ -116,6 +121,12 @@ pub fn resolve_target(input: &str, options: &TargetOptions) -> Result<ResolvedTa
 }
 
 fn parse_github_target(input: &str) -> Option<(String, String)> {
+    let github_path =
+        Regex::new(r"(?i)^github\.com/([^/]+)/([^/#?]+?)(?:\.git)?(?:[/?#].*)?$").unwrap();
+    if let Some(caps) = github_path.captures(input) {
+        return Some((caps[1].to_string(), caps[2].to_string()));
+    }
+
     let shorthand = Regex::new(r"^([A-Za-z0-9-]+)/([A-Za-z0-9._-]+?)(?:\.git)?$").unwrap();
     if let Some(caps) = shorthand.captures(input) {
         return Some((caps[1].to_string(), caps[2].to_string()));
@@ -141,10 +152,9 @@ fn parse_github_target(input: &str) -> Option<(String, String)> {
 
 fn clone_dir_for(repository: &str, custom_cache_dir: Option<&Path>) -> Result<PathBuf> {
     let base = custom_cache_dir.map(PathBuf::from).unwrap_or_else(|| {
-        cache_dir()
-            .unwrap_or_else(std::env::temp_dir)
-            .join("leak-hunter")
-            .join("repos")
+        std::env::current_dir()
+            .unwrap_or_else(|_| std::env::temp_dir())
+            .join(".leak-hunter-cache")
     });
     let mut hasher = Sha1::new();
     hasher.update(repository.as_bytes());
@@ -165,6 +175,7 @@ fn clone_repo(web_url: &str, destination: &Path, branch: Option<&str>) -> Result
     cmd.env("GIT_TERMINAL_PROMPT", "0");
     let output = cmd.output().context("failed to run git clone")?;
     if !output.status.success() {
+        let _ = fs::remove_dir_all(destination);
         bail!(
             "Failed to clone GitHub repository {web_url}: {}",
             String::from_utf8_lossy(&output.stderr).trim()

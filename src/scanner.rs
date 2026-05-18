@@ -46,6 +46,7 @@ pub struct Finding {
     pub line_number: usize,
     pub column_number: usize,
     pub risk_score: u8,
+    pub entropy: f64,
     pub secret_hash: String,
     pub secret: String,
     pub snippet: String,
@@ -255,7 +256,7 @@ fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
 
     let text = String::from_utf8_lossy(&bytes);
     if options.debug {
-        eprintln!("scan file: {rel}");
+        eprintln!("[debug] scan file: {rel}");
     }
     let mut findings = Vec::new();
     for pattern in SECRET_PATTERNS.iter() {
@@ -266,8 +267,21 @@ fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
             if should_suppress(&rel, &text, secret) {
                 continue;
             }
-            let risk = risk_score(pattern.base_risk, secret, &rel, &text);
+            let secret_entropy = entropy(secret);
+            let risk = risk_score(pattern.id, pattern.base_risk, secret, &rel, &text);
+            if options.debug {
+                eprintln!(
+                    "[debug] candidate finding: file={rel} type={} risk={} entropy={:.2}",
+                    pattern.id, risk, secret_entropy
+                );
+            }
             if risk < options.min_risk {
+                if options.debug {
+                    eprintln!(
+                        "[debug] skipped_by_min_risk: file={rel} type={} risk={} min_risk={}",
+                        pattern.id, risk, options.min_risk
+                    );
+                }
                 continue;
             }
             let (line, column) = line_column(&text, secret_match.start());
@@ -279,6 +293,7 @@ fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
                 line_number: line,
                 column_number: column,
                 risk_score: risk,
+                entropy: secret_entropy,
                 secret_hash: secret_hash(secret),
                 secret: if options.redact {
                     redact_secret(secret)
@@ -321,7 +336,7 @@ fn should_suppress(file_path: &str, text: &str, secret: &str) -> bool {
     false
 }
 
-fn risk_score(base: u8, secret: &str, file_path: &str, text: &str) -> u8 {
+fn risk_score(pattern_id: &str, base: u8, secret: &str, file_path: &str, text: &str) -> u8 {
     let mut score = i16::from(base);
     let lower_path = file_path.to_ascii_lowercase();
     if lower_path.ends_with(".env") || lower_path.contains(".env.") {
@@ -339,10 +354,20 @@ fn risk_score(base: u8, secret: &str, file_path: &str, text: &str) -> u8 {
     if entropy(secret) < 3.0 && secret.len() < 24 {
         score -= 20;
     }
-    if text.to_ascii_lowercase().contains("public key")
-        || text.to_ascii_lowercase().contains("certificate")
-    {
+    let lower_text = text.to_ascii_lowercase();
+    if lower_text.contains("public key") || lower_text.contains("certificate") {
         score -= 10;
+    }
+    if pattern_id == "google_api_key"
+        && (lower_path.contains("firebase")
+            || lower_path.contains("google-services.json")
+            || lower_path.contains("googleservice-info.plist")
+            || lower_text.contains("firebaseconfig"))
+    {
+        score -= 55;
+    }
+    if pattern_id == "aws_access_key_id" && lower_text.contains("secret_access_key") {
+        score += 10;
     }
     score.clamp(0, 100) as u8
 }
