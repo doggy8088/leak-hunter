@@ -19,8 +19,12 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - name: Align npm version with release tag
-        if: github.event.release.tag_name != ''
+        if: github.event_name == 'release'
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ github.event.release.tag_name }}"
+          VERSION="${VERSION#v}"
           npm version "$VERSION" --no-git-tag-version
       - run: npm publish --provenance --access public
+        env:
+          LEAK_HUNTER_RELEASE_ASSET_RETRIES: 12
+          LEAK_HUNTER_RELEASE_ASSET_RETRY_DELAY_MS: 10000

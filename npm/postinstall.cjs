@@ -2,7 +2,16 @@
 'use strict';
 
 const { createHash } = require('node:crypto');
-const { copyFileSync, chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
+const {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} = require('node:fs');
 const { get } = require('node:https');
 const { join } = require('node:path');
 const { spawnSync } = require('node:child_process');
@@ -35,9 +44,9 @@ function packageVersion() {
   return require(join(PACKAGE_ROOT, 'package.json')).version;
 }
 
-function artifactName(target, version = packageVersion()) {
+function artifactName(target) {
   const ext = target.includes('windows') || target.includes('pc-windows') ? 'zip' : 'tar.xz';
-  return `leak-hunter-${version}-${target}.${ext}`;
+  return `leak-hunter-${target}.${ext}`;
 }
 
 function releaseBaseUrl(version = packageVersion()) {
@@ -91,6 +100,19 @@ function extract(archive, destDir) {
   }
 }
 
+function findExtractedBinary(dir, binName = BIN_NAME) {
+  const direct = join(dir, binName);
+  if (existsSync(direct)) return direct;
+
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const candidate = join(dir, entry.name, binName);
+    if (existsSync(candidate)) return candidate;
+  }
+
+  throw new Error(`Archive did not contain ${binName}`);
+}
+
 function installFromLocalBuild() {
   const localRelease = join(PACKAGE_ROOT, 'target', 'release', BIN_NAME);
   if (!existsSync(localRelease)) return false;
@@ -115,10 +137,7 @@ async function installFromRelease() {
   verifyChecksum(archivePath, readFileSync(checksumPath, 'utf8'));
   extract(archivePath, tmpDir);
 
-  const extracted = join(tmpDir, BIN_NAME);
-  if (!existsSync(extracted)) {
-    throw new Error(`Archive did not contain ${BIN_NAME}`);
-  }
+  const extracted = findExtractedBinary(tmpDir);
   mkdirSync(BIN_DIR, { recursive: true });
   copyFileSync(extracted, DEST);
   chmodSync(DEST, 0o755);
@@ -141,6 +160,7 @@ module.exports = {
   TARGETS,
   artifactName,
   cargoDistTarget,
+  findExtractedBinary,
   platformKey,
   releaseBaseUrl,
   sha256,

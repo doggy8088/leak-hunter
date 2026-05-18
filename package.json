@@ -7,11 +7,13 @@
   },
   "scripts": {
     "postinstall": "node npm/postinstall.cjs",
-    "test": "node --test tests/postinstall.test.cjs"
+    "test": "node --test tests/postinstall.test.cjs",
+    "prepublishOnly": "npm test && npm pack --dry-run && node npm/prepublish-check.cjs"
   },
   "files": [
     "npm/cli.cjs",
     "npm/postinstall.cjs",
+    "npm/prepublish-check.cjs",
     "README.md"
   ],
   "repository": {

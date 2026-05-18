@@ -116,7 +116,7 @@ leak-hunter . --json \
 
 ## npm package 與 checksum
 
-`npm/postinstall.cjs` 會依平台對應 cargo-dist target，下載 release archive 與對應 `.sha256`，驗證 SHA-256 後才解壓縮並安裝 native binary。npm 發佈使用 Trusted Publishing / OIDC，不使用長期 `NPM_TOKEN`。
+`npm/postinstall.cjs` 會依平台對應 cargo-dist target，下載 release archive 與對應 `.sha256`，驗證 SHA-256 後才解壓縮並安裝 native binary。npm 發佈使用 Trusted Publishing / OIDC，不使用長期 `NPM_TOKEN`。發布前的 `prepublishOnly` 會先跑 npm 測試、`npm pack --dry-run`，並確認所有 release archive 與 checksum 都已存在。
 
 ## Development
 

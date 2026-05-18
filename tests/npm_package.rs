@@ -2,7 +2,10 @@
 fn npm_publish_workflow_uses_trusted_publishing_and_updates_npm() {
     let workflow = std::fs::read_to_string(".github/workflows/npm-publish.yml").unwrap();
     assert!(workflow.contains("id-token: write"));
+    assert!(workflow.contains("if: github.event_name == 'release'"));
+    assert!(workflow.contains("github.event.release.tag_name"));
     assert!(workflow.contains("npm publish --provenance --access public"));
+    assert!(workflow.contains("LEAK_HUNTER_RELEASE_ASSET_RETRIES"));
     assert!(!workflow.contains("NPM_TOKEN"));
 }
 
@@ -12,6 +15,10 @@ fn npm_package_metadata_matches_cargo_and_exposes_expected_bins() {
     let cargo = std::fs::read_to_string("Cargo.toml").unwrap();
     assert!(package.contains("\"name\": \"@doggy8088/leak-hunter\""));
     assert!(package.contains("\"leak-hunter\": \"npm/cli.cjs\""));
+    assert!(package.contains(
+        "\"prepublishOnly\": \"npm test && npm pack --dry-run && node npm/prepublish-check.cjs\""
+    ));
+    assert!(package.contains("\"npm/prepublish-check.cjs\""));
     assert!(package.contains("\"version\": \"0.1.0\""));
     assert!(cargo.contains("version = \"0.1.0\""));
 }
