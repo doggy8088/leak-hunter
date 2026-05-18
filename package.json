@@ -6,7 +6,7 @@
     "leak-hunter": "npm/cli.cjs"
   },
   "scripts": {
-    "build:docs": "tailwindcss -i docs/src/styles.css -o docs/assets/site.css --minify",
+    "build:docs": "tailwindcss -i public/src/styles.css -o public/assets/site.css --minify",
     "postinstall": "node npm/postinstall.cjs",
     "test": "node --test tests/postinstall.test.cjs",
     "prepublishOnly": "npm test && npm pack --dry-run && node npm/prepublish-check.cjs"
