@@ -29,6 +29,42 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             90,
         ),
         SecretPattern::new(
+            "anthropic_api_key",
+            "Anthropic API Key",
+            r"\b(?P<secret>sk-ant-api\d{2}-[A-Za-z0-9_-]{40,})\b",
+            90,
+        ),
+        SecretPattern::new(
+            "xai_api_key",
+            "xAI API Key",
+            r"\b(?P<secret>xai-[A-Za-z0-9_-]{20,})\b",
+            85,
+        ),
+        SecretPattern::new(
+            "groq_api_key",
+            "Groq API Key",
+            r"\b(?P<secret>gsk_[A-Za-z0-9]{32,})\b",
+            85,
+        ),
+        SecretPattern::new(
+            "openrouter_api_key",
+            "OpenRouter API Key",
+            r"\b(?P<secret>sk-or-v1-[A-Za-z0-9_-]{32,})\b",
+            85,
+        ),
+        SecretPattern::new(
+            "replicate_api_token",
+            "Replicate API Token",
+            r"\b(?P<secret>r8_[A-Za-z0-9]{32,})\b",
+            85,
+        ),
+        SecretPattern::new(
+            "huggingface_token",
+            "Hugging Face Token",
+            r"\b(?P<secret>hf_[A-Za-z0-9]{30,})\b",
+            80,
+        ),
+        SecretPattern::new(
             "google_api_key",
             "Google API Key",
             r"\b(?P<secret>AIza[0-9A-Za-z\-_]{35})\b",

@@ -32,6 +32,42 @@ fn detects_split_openai_like_key_without_exposing_raw_value() {
 }
 
 #[test]
+fn detects_major_ai_provider_api_keys() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("ai.env"),
+        [
+            "ANTHROPIC_API_KEY=sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcdefghijklmnopqrstuvwxyz\n",
+            "XAI_API_KEY=xai-AbCdEfGhIjKlMnOpQrStUvWxYz123456\n",
+            "GROQ_API_KEY=gsk_AbCdEfGhIjKlMnOpQrStUvWxYz1234567890\n",
+            "OPENROUTER_API_KEY=sk-or-v1-AbCdEfGhIjKlMnOpQrStUvWxYz1234567890\n",
+            "REPLICATE_API_TOKEN=r8_AbCdEfGhIjKlMnOpQrStUvWxYz1234567890\n",
+            "HUGGINGFACE_TOKEN=hf_AbCdEfGhIjKlMnOpQrStUvWxYz123456\n",
+        ]
+        .concat(),
+    )
+    .unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    let finding_types: Vec<&str> = result
+        .findings
+        .iter()
+        .map(|finding| finding.finding_type.as_str())
+        .collect();
+
+    for expected in [
+        "anthropic_api_key",
+        "xai_api_key",
+        "groq_api_key",
+        "openrouter_api_key",
+        "replicate_api_token",
+        "huggingface_token",
+    ] {
+        assert!(finding_types.contains(&expected));
+    }
+}
+
+#[test]
 fn suppresses_prefixed_keys_with_repeated_placeholder_body() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(
@@ -42,6 +78,8 @@ fn suppresses_prefixed_keys_with_repeated_placeholder_body() {
             "GOOGLE_API_KEY=AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
             "GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx\n",
             "AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXX\n",
+            "ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+            "GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
         ]
         .concat(),
     )
