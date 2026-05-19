@@ -32,6 +32,26 @@ fn detects_split_openai_like_key_without_exposing_raw_value() {
 }
 
 #[test]
+fn suppresses_prefixed_keys_with_repeated_placeholder_body() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("app.env"),
+        [
+            "OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx\n",
+            "OPENAI_PROJECT_API_KEY=sk-proj-xxxx-xxxx-xxxx-xxxx\n",
+            "GOOGLE_API_KEY=AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+            "GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx\n",
+            "AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXX\n",
+        ]
+        .concat(),
+    )
+    .unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    assert_eq!(result.summary.findings, 0);
+}
+
+#[test]
 fn skips_binary_files() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("bin.dat"), b"abc\0def").unwrap();

@@ -206,5 +206,22 @@ pub static WEAK_SECRET_RE: Lazy<Regex> = Lazy::new(|| {
 
 pub fn is_likely_placeholder(secret: &str) -> bool {
     let trimmed = secret.trim().trim_matches(['\"', '\'', '`']);
-    WEAK_SECRET_RE.is_match(trimmed)
+    WEAK_SECRET_RE.is_match(trimmed) || has_repeated_single_char_body(trimmed)
+}
+
+fn has_repeated_single_char_body(secret: &str) -> bool {
+    let normalized: Vec<u8> = secret
+        .bytes()
+        .filter(|b| b.is_ascii_alphanumeric())
+        .map(|b| b.to_ascii_lowercase())
+        .collect();
+
+    if normalized.len() < 17 {
+        return false;
+    }
+
+    (1..normalized.len()).any(|start| {
+        let body = &normalized[start..];
+        body.len() >= 16 && body.iter().all(|b| *b == body[0])
+    })
 }
