@@ -88,7 +88,7 @@ leak-hunter . --json \
 
 1. 解析本機或 GitHub target。
 2. GitHub repository 會 clone 到 `.leak-hunter-cache` 或 `--cache-dir` 指定目錄。
-3. 使用 gitignore-aware walker 與 include / exclude glob。
+3. 使用 gitignore-aware walker、`.leakhunterignore` 與 include / exclude glob；`.leakhunterignore` 使用 `.gitignore` 語法。
 4. 略過 binary 或超過大小上限的檔案。
 5. 套用內建 pattern inventory 與 context-aware risk model。
 6. 對 package-lock npm integrity hashes、Firebase public API key context、docs/example 等常見 noise 降噪。

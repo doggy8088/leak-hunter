@@ -104,11 +104,15 @@ pub fn scan_path(root: &Path, options: &ScanOptions) -> Result<ScanResult> {
         );
     }
 
-    let files: Vec<PathBuf> = WalkBuilder::new(root)
+    let mut walker = WalkBuilder::new(root);
+    walker
         .hidden(false)
         .git_ignore(options.default_exclude)
         .git_exclude(options.default_exclude)
         .parents(options.default_exclude)
+        .add_custom_ignore_filename(".leakhunterignore");
+
+    let files: Vec<PathBuf> = walker
         .build()
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().map(|ft| ft.is_file()).unwrap_or(false))

@@ -90,6 +90,28 @@ fn suppresses_prefixed_keys_with_repeated_placeholder_body() {
 }
 
 #[test]
+fn leakhunterignore_filters_files_with_gitignore_syntax() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join(".leakhunterignore"), "*.env\n!kept.env\n").unwrap();
+    let ignored_secret = ["sk-proj-", "ignoredSECRETvalue1234567890"].concat();
+    let kept_secret = ["sk-proj-", "keptSECRETvalue1234567890ABC"].concat();
+    std::fs::write(
+        dir.path().join("ignored.env"),
+        format!("OPENAI_API_KEY={ignored_secret}\n"),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.path().join("kept.env"),
+        format!("OPENAI_API_KEY={kept_secret}\n"),
+    )
+    .unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    assert_eq!(result.summary.findings, 1);
+    assert_eq!(result.findings[0].file_path, "kept.env");
+}
+
+#[test]
 fn skips_binary_files() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("bin.dat"), b"abc\0def").unwrap();

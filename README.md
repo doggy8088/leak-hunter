@@ -88,7 +88,7 @@ leak-hunter . --json \
 
 1. Resolve the local or GitHub target.
 2. Clone GitHub repositories into `.leak-hunter-cache` or the directory specified by `--cache-dir`.
-3. Walk files with gitignore-aware include / exclude glob handling.
+3. Walk files with gitignore-aware include / exclude glob handling, including `.leakhunterignore` files that use `.gitignore` syntax.
 4. Skip binary files or files above the configured size limit.
 5. Apply the built-in pattern inventory and context-aware risk model.
 6. Reduce common noise from npm integrity hashes in package-lock files, Firebase public API key context, and docs/example paths.
