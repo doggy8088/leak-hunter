@@ -406,7 +406,7 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             "taiwan_einvoice_barcode",
             "Taiwan E-Invoice Mobile Barcode",
             r#"(?:^|[^A-Za-z0-9])(?P<secret>/[A-Z0-9.+\-]{7})(?:\b|[^A-Z0-9.+\-])"#,
-            50,
+            20,
             is_valid_taiwan_einvoice_barcode,
         ),
         SecretPattern::new(

@@ -96,7 +96,10 @@ fn detects_taiwan_einvoice_barcode() {
     )
     .unwrap();
 
-    let result = scan_path(dir.path(), &options()).unwrap();
+    // Base risk is 20 (Low), so use min_risk=0 to catch these findings
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
     let findings: Vec<_> = result
         .findings
         .iter()
@@ -105,6 +108,12 @@ fn detects_taiwan_einvoice_barcode() {
 
     // Two valid barcodes should be detected (False positives should be correctly filtered out)
     assert_eq!(findings.len(), 2);
+    // Base score is 20; context keyword "barcode" may add +15 → max 35. Still Low risk.
+    assert!(
+        findings.iter().all(|f| f.risk_score <= 35),
+        "Expected risk_score <= 35, got: {:?}",
+        findings.iter().map(|f| f.risk_score).collect::<Vec<_>>()
+    );
 
     // Strict redaction check
     assert_eq!(findings[0].secret, "/A…23");

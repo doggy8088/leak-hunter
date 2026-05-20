@@ -57,7 +57,7 @@
 | `twilio_api_key_sid` | Twilio API Key SID | **70** | Medium | `SK` 開頭的 32 碼識別碼 |
 | `taiwan_citizen_certificate` | 台灣自然人憑證號碼 | **60** | Medium | **台灣個資**：2 碼大寫英文字母 + 14 碼數字 |
 | `taiwan_mobile` | 台灣手機號碼 | **50** | Medium | **台灣個資**：`09` 或 `+8869` 開頭共 10 碼（支援 `-` 或空格） |
-| `taiwan_einvoice_barcode` | 台灣電子發票手機條碼載具 | **50** | Medium | **台灣個資**：`/` 開頭共 8 碼（符合載具字元特徵） |
+| `taiwan_einvoice_barcode` | 台灣電子發票手機條碼載具 | **20** | Low | **台灣個資**：`/` 開頭共 8 碼（符合載具字元特徵），本身不具機密性，風險極低 |
 | `certificate_pem` | PEM Certificate | **25** | Low | PEM 格式憑證公開部分 |
 | `ssh_public_key` | SSH Public Key | **20** | Low | SSH 公開金鑰 |
 

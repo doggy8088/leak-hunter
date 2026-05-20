@@ -355,7 +355,8 @@ fn risk_score(
         && (secret.contains("example") || secret.contains("sample") || secret.contains("dummy"));
 
     if is_placeholder || is_doc_example {
-        return 30;
+        // Never inflate a pattern whose base score is already below 30
+        return base.min(30);
     }
 
     let mut score = i16::from(base);
