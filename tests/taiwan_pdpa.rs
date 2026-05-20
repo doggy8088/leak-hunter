@@ -66,7 +66,7 @@ fn detects_taiwan_mobile_phone_in_various_formats() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(
         dir.path().join("mobile.txt"),
-        "Mobile numbers:\n0988123456\n+886988123456\n0988-123-456\n0988 123 456\n+886-988-123-456\n\nInvalid:\n0888123456\n098812345\n09881234567\n",
+        "Mobile numbers:\n0988123456\n+886988123456\n886988123456\n0988-123-456\n0988 123 456\n+886-988-123-456\n\nInvalid:\n0888123456\n098812345\n09881234567\n",
     )
     .unwrap();
 
@@ -77,14 +77,67 @@ fn detects_taiwan_mobile_phone_in_various_formats() {
         .filter(|f| f.finding_type == "taiwan_mobile")
         .collect();
 
-    // All five valid formats should be detected
-    assert_eq!(findings.len(), 5);
+    // All six valid formats should be detected
+    assert_eq!(findings.len(), 6);
 
     // Strict redaction check: e.g. "0988-123-456" -> "09…56" or "+886988123456" -> "+8…56"
-    assert!(findings
-        .iter()
-        .all(|f| f.secret.starts_with("09…") || f.secret.starts_with("+8…")));
+    assert!(findings.iter().all(|f| f.secret.starts_with("09…")
+        || f.secret.starts_with("+8…")
+        || f.secret.starts_with("88…")));
     assert!(findings.iter().all(|f| f.secret.ends_with("56")));
+}
+
+#[test]
+fn scores_strict_taiwan_mobile_formats_at_base_risk() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("numbers.txt"),
+        [
+            "0900-000000\n",
+            "0900000000\n",
+            "+886-900-000000\n",
+            "+886900000000\n",
+            "886900000000\n",
+        ]
+        .concat(),
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    opts.redact = false;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    let findings: Vec<_> = result
+        .findings
+        .iter()
+        .filter(|f| f.finding_type == "taiwan_mobile")
+        .collect();
+
+    assert_eq!(findings.len(), 5);
+    assert!(findings.iter().all(|f| f.risk_score == 50));
+}
+
+#[test]
+fn lowers_incomplete_taiwan_mobile_formats_by_ten() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("numbers.txt"),
+        ["0900 000000\n", "0900 000 000\n", "+886 900 000000\n"].concat(),
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    opts.redact = false;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    let findings: Vec<_> = result
+        .findings
+        .iter()
+        .filter(|f| f.finding_type == "taiwan_mobile")
+        .collect();
+
+    assert_eq!(findings.len(), 3);
+    assert!(findings.iter().all(|f| f.risk_score == 40));
 }
 
 #[test]

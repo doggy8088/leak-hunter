@@ -347,6 +347,10 @@ fn risk_score(
 ) -> u8 {
     let lower_path = file_path.to_ascii_lowercase();
 
+    if pattern_id == "taiwan_mobile" {
+        return taiwan_mobile_risk_score(base, secret);
+    }
+
     // Placeholders and documentation examples are rated as Low risk (30)
     let is_placeholder = is_likely_placeholder(secret);
     let is_doc_example = (lower_path.contains("readme")
@@ -498,6 +502,47 @@ fn has_local_uri_host(secret: &str) -> bool {
         .is_some_and(|host| {
             host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "0.0.0.0"
         })
+}
+
+fn taiwan_mobile_risk_score(base: u8, secret: &str) -> u8 {
+    if is_strict_taiwan_mobile_format(secret) {
+        base
+    } else {
+        base.saturating_sub(10)
+    }
+}
+
+fn is_strict_taiwan_mobile_format(secret: &str) -> bool {
+    let bytes = secret.as_bytes();
+    matches!(bytes.len(), 10 | 11 | 12 | 13 | 15)
+        && (is_strict_local_taiwan_mobile(bytes)
+            || is_strict_plus_taiwan_mobile(bytes)
+            || is_strict_bare_country_taiwan_mobile(bytes))
+}
+
+fn is_strict_local_taiwan_mobile(bytes: &[u8]) -> bool {
+    (bytes.len() == 10 && bytes.starts_with(b"09") && bytes.iter().all(u8::is_ascii_digit))
+        || (bytes.len() == 11
+            && bytes.starts_with(b"09")
+            && bytes[4] == b'-'
+            && bytes[..4].iter().all(u8::is_ascii_digit)
+            && bytes[5..].iter().all(u8::is_ascii_digit))
+}
+
+fn is_strict_plus_taiwan_mobile(bytes: &[u8]) -> bool {
+    (bytes.len() == 15
+        && bytes.starts_with(b"+886-9")
+        && bytes[8] == b'-'
+        && bytes[1..4].iter().all(u8::is_ascii_digit)
+        && bytes[5..8].iter().all(u8::is_ascii_digit)
+        && bytes[9..].iter().all(u8::is_ascii_digit))
+        || (bytes.len() == 13
+            && bytes.starts_with(b"+8869")
+            && bytes[1..].iter().all(u8::is_ascii_digit))
+}
+
+fn is_strict_bare_country_taiwan_mobile(bytes: &[u8]) -> bool {
+    bytes.len() == 12 && bytes.starts_with(b"8869") && bytes.iter().all(u8::is_ascii_digit)
 }
 
 fn entropy(value: &str) -> f64 {
