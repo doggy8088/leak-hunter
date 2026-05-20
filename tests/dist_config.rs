@@ -26,8 +26,12 @@ fn release_workflow_uses_generated_cargo_dist_artifact_flow() {
     assert!(workflow.contains("runs-on: \"ubuntu-22.04\""));
     assert!(workflow.contains("persist-credentials: false"));
     assert!(workflow.contains("host --steps=create --tag={0}"));
-    assert!(workflow
-        .contains("matrix: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix }}"));
+    assert!(workflow.contains("artifacts-matrix: ${{ steps.plan.outputs.artifacts-matrix }}"));
+    assert!(workflow.contains("has-local-artifacts: ${{ steps.plan.outputs.has-local-artifacts }}"));
+    assert!(workflow.contains(
+        "if: ${{ needs.plan.outputs.has-local-artifacts == 'true' && (needs.plan.outputs.publishing == 'true' || needs.plan.outputs.pr-run-mode == 'upload') }}"
+    ));
+    assert!(workflow.contains("matrix: ${{ fromJson(needs.plan.outputs.artifacts-matrix) }}"));
     assert!(workflow.contains("dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }}"));
     assert!(workflow.contains(
         "dist build ${{ needs.plan.outputs.tag-flag }} --output-format=json \"--artifacts=global\""
