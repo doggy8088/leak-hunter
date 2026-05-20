@@ -119,6 +119,27 @@ fn detects_database_connection_strings_with_passwords_as_medium_risk() {
 }
 
 #[test]
+fn lowers_redis_localhost_uri_risk() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("runtime.txt"),
+        "export REDIS_URL=\"redis://localhost:6379\"\n",
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    let finding = result
+        .findings
+        .iter()
+        .find(|f| f.finding_type == "redis_uri")
+        .expect("expected redis localhost URI finding");
+
+    assert_eq!(finding.risk_score, 60);
+}
+
+#[test]
 fn detects_framework_application_secrets_in_popular_framework_configs() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(dir.path().join("config")).unwrap();

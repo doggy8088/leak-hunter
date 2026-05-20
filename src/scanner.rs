@@ -7,6 +7,7 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
+use url::Url;
 
 #[derive(Debug, Clone)]
 pub struct ScanOptions {
@@ -375,6 +376,9 @@ fn risk_score(
     if entropy(secret) < 3.0 && secret.len() < 24 {
         score -= 20;
     }
+    if is_database_uri_pattern(pattern_id) && has_local_uri_host(secret) {
+        score -= 20;
+    }
     let lower_text = text.to_ascii_lowercase();
     if lower_text.contains("public key") || lower_text.contains("certificate") {
         // Don't penalise the citizen certificate pattern itself for containing the word "certificate"
@@ -481,6 +485,19 @@ fn risk_score(
     }
 
     score.clamp(0, 100) as u8
+}
+
+fn is_database_uri_pattern(pattern_id: &str) -> bool {
+    matches!(pattern_id, "postgres_uri" | "mongodb_uri" | "redis_uri")
+}
+
+fn has_local_uri_host(secret: &str) -> bool {
+    Url::parse(secret)
+        .ok()
+        .and_then(|url| url.host_str().map(str::to_ascii_lowercase))
+        .is_some_and(|host| {
+            host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "0.0.0.0"
+        })
 }
 
 fn entropy(value: &str) -> f64 {
