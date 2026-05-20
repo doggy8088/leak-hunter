@@ -479,7 +479,7 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
         SecretPattern::new(
             "taiwan_mobile",
             "Taiwan Mobile Phone Number",
-            r"(?:^|[^0-9])(?P<secret>(?:\+?886[-\s]?|0)9(?:[-\s]?[0-9]){8})\b",
+            r"(?:^|[^A-Za-z0-9])(?P<secret>(?:\+?886[-\s]?|0)9(?:[-\s]?[0-9]){8})\b",
             50,
         ),
         SecretPattern::new_with_validator(

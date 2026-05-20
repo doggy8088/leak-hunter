@@ -88,6 +88,24 @@ fn detects_taiwan_mobile_phone_in_various_formats() {
 }
 
 #[test]
+fn does_not_extract_taiwan_mobile_from_alphanumeric_token() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("diag.log"),
+        "0031DF0902000000:error:10080002:BIO routines:BIO_lookup_ex:system lib\n",
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    assert!(result
+        .findings
+        .iter()
+        .all(|f| f.finding_type != "taiwan_mobile"));
+}
+
+#[test]
 fn scores_strict_taiwan_mobile_formats_at_base_risk() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(

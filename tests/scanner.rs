@@ -270,6 +270,13 @@ fn test_database_connection_string_filtering_and_placeholders() {
     )
     .unwrap();
 
+    // 1c. Angle-bracket placeholder: Password=<password> — should score 20 (Low)
+    std::fs::write(
+        dir.path().join("placeholder_conn_c.md"),
+        "Server=<host>,<port>;Database=CMS;User Id=<user>;Password=<password>;Encrypt=True;TrustServerCertificate=True",
+    )
+    .unwrap();
+
     // 2. C# code lines that merely mention Password should NOT be found as connection strings
     std::fs::write(
         dir.path().join("code_false_positives.cs"),
@@ -314,6 +321,17 @@ fn test_database_connection_string_filtering_and_placeholders() {
             f.risk_score
         );
     }
+
+    // min-risk 20: include the angle-bracket placeholder connection string, scored 20
+    let mut opts_20 = options();
+    opts_20.min_risk = 20;
+    let result_20 = scan_path(dir.path(), &opts_20).unwrap();
+    let bracketed_placeholder = result_20
+        .findings
+        .iter()
+        .find(|f| f.file_path == "placeholder_conn_c.md")
+        .expect("Expected angle-bracket placeholder connection string finding");
+    assert_eq!(bracketed_placeholder.risk_score, 20);
 }
 
 #[test]

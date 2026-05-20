@@ -353,6 +353,9 @@ fn risk_score(
     if pattern_id == "postgres_uri" && is_hostless_postgres_uri(secret) {
         return path_adjusted_base_score(20, &lower_path);
     }
+    if pattern_id == "database_connection_string" && has_bracketed_password_placeholder(secret) {
+        return path_adjusted_base_score(20, &lower_path);
+    }
 
     // Placeholders and documentation examples are rated as Low risk (30)
     let is_placeholder = is_likely_placeholder(secret);
@@ -538,6 +541,31 @@ fn is_hostless_postgres_uri(secret: &str) -> bool {
         .ok()
         .filter(|url| matches!(url.scheme(), "postgres" | "postgresql"))
         .is_some_and(|url| url.host_str().is_none())
+}
+
+fn has_bracketed_password_placeholder(conn_str: &str) -> bool {
+    let lower_conn = conn_str.to_ascii_lowercase();
+    has_bracketed_password_value(&lower_conn, "password")
+        || has_bracketed_password_value(&lower_conn, "pwd")
+}
+
+fn has_bracketed_password_value(lower_conn: &str, key: &str) -> bool {
+    let Some(pos) = lower_conn.find(key) else {
+        return false;
+    };
+    let suffix = &lower_conn[pos + key.len()..];
+    let trimmed_suffix = suffix.trim_start();
+    if !trimmed_suffix.starts_with('=') {
+        return false;
+    }
+    let val = trimmed_suffix[1..]
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_matches(['"', '\'', '`']);
+
+    val.starts_with('<') && val.ends_with('>')
 }
 
 fn taiwan_mobile_risk_score(base: u8, secret: &str) -> u8 {
