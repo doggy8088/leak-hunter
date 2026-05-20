@@ -92,7 +92,7 @@ fn detects_taiwan_einvoice_barcode() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(
         dir.path().join("barcode.txt"),
-        "My barcode is /ABC+123 and carrier /1.+-A9Z.\nInvalid: /abc+123, ABC+123, /ABC+1234\n",
+        "My barcode is /ABC+123 and carrier /1.+-A9Z.\nInvalid: /abc+123, ABC+123, /ABC+1234\nFalse Positives: /169.254, /127.0.0, /COPYALL\n",
     )
     .unwrap();
 
@@ -103,7 +103,7 @@ fn detects_taiwan_einvoice_barcode() {
         .filter(|f| f.finding_type == "taiwan_einvoice_barcode")
         .collect();
 
-    // Two valid barcodes should be detected
+    // Two valid barcodes should be detected (False positives should be correctly filtered out)
     assert_eq!(findings.len(), 2);
 
     // Strict redaction check

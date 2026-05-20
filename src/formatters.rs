@@ -146,7 +146,7 @@ fn buckets(findings: &[Finding]) -> (usize, usize, usize, usize) {
         match finding.risk_score {
             90..=100 => acc.0 += 1,
             75..=89 => acc.1 += 1,
-            50..=74 => acc.2 += 1,
+            40..=74 => acc.2 += 1,
             _ => acc.3 += 1,
         }
         acc
@@ -157,7 +157,7 @@ fn risk_label(score: u8) -> &'static str {
     match score {
         90..=100 => "Critical",
         75..=89 => "High",
-        50..=74 => "Medium",
+        40..=74 => "Medium",
         _ => "Low",
     }
 }

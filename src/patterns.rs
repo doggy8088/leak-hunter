@@ -146,6 +146,29 @@ pub fn is_valid_taiwan_arc_ui(id: &str) -> bool {
     }
 }
 
+pub fn is_valid_taiwan_einvoice_barcode(barcode: &str) -> bool {
+    let barcode = barcode.trim();
+    if !barcode.starts_with('/') || barcode.chars().count() != 8 {
+        return false;
+    }
+    let content = &barcode[1..];
+
+    // 1. Filter out IP address segments (contains dots but no letters, e.g. /169.254, /127.0.0)
+    let has_dot = content.contains('.');
+    let has_letter = content.chars().any(|c| c.is_ascii_alphabetic());
+    if has_dot && !has_letter {
+        return false;
+    }
+
+    // 2. Filter out command line flags (consisting entirely of letters, e.g. /COPYALL)
+    let is_all_letters = content.chars().all(|c| c.is_ascii_alphabetic());
+    if is_all_letters {
+        return false;
+    }
+
+    true
+}
+
 pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
     vec![
         SecretPattern::new(
@@ -378,11 +401,12 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             r"(?:^|[^A-Za-z0-9])(?P<secret>(?:\+886[-\s]?|0)9(?:[-\s]?\d){8})\b",
             50,
         ),
-        SecretPattern::new(
+        SecretPattern::new_with_validator(
             "taiwan_einvoice_barcode",
             "Taiwan E-Invoice Mobile Barcode",
             r#"(?:^|[^A-Za-z0-9])(?P<secret>/[A-Z0-9.+\-]{7})(?:\b|[^A-Z0-9.+\-])"#,
             50,
+            is_valid_taiwan_einvoice_barcode,
         ),
         SecretPattern::new(
             "taiwan_citizen_certificate",
