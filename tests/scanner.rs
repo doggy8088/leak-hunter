@@ -186,6 +186,43 @@ fn lowers_google_api_key_risk_in_firebase_context() {
 }
 
 #[test]
+fn lowers_risk_for_python_site_packages_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let package_dir = dir.path().join("lib/python3.11/site-packages/vendor_pkg");
+    std::fs::create_dir_all(&package_dir).unwrap();
+    let secret = ["sk-proj-", "abcDEFghiJKLmnopQRSTuvwxYZ123456"].concat();
+    std::fs::write(
+        dir.path().join("project_module.py"),
+        format!("OPENAI_API_KEY={secret}\n"),
+    )
+    .unwrap();
+    std::fs::write(
+        package_dir.join("module.py"),
+        format!("OPENAI_API_KEY={secret}\n"),
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    let project_finding = result
+        .findings
+        .iter()
+        .find(|f| f.file_path == "project_module.py")
+        .expect("expected project finding");
+    let site_packages_finding = result
+        .findings
+        .iter()
+        .find(|f| f.file_path == "lib/python3.11/site-packages/vendor_pkg/module.py")
+        .expect("expected site-packages finding");
+
+    assert_eq!(
+        site_packages_finding.risk_score,
+        project_finding.risk_score - 15
+    );
+}
+
+#[test]
 fn include_exclude_and_skip_accounting_match_options() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("a.txt"), "hello").unwrap();

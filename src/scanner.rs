@@ -346,9 +346,10 @@ fn risk_score(
     start_idx: usize,
 ) -> u8 {
     let lower_path = file_path.to_ascii_lowercase();
+    let path_penalty = path_risk_penalty(&lower_path);
 
     if pattern_id == "taiwan_mobile" {
-        return taiwan_mobile_risk_score(base, secret);
+        return apply_risk_penalty(taiwan_mobile_risk_score(base, secret), path_penalty);
     }
 
     // Placeholders and documentation examples are rated as Low risk (30)
@@ -361,10 +362,10 @@ fn risk_score(
 
     if is_placeholder || is_doc_example {
         // Never inflate a pattern whose base score is already below 30
-        return base.min(30);
+        return apply_risk_penalty(base.min(30), path_penalty);
     }
 
-    let mut score = i16::from(base);
+    let mut score = i16::from(base) - i16::from(path_penalty);
     if lower_path.ends_with(".env") || lower_path.contains(".env.") {
         score += 8;
     }
@@ -489,6 +490,36 @@ fn risk_score(
     }
 
     score.clamp(0, 100) as u8
+}
+
+fn path_risk_penalty(lower_path: &str) -> u8 {
+    if is_python_site_packages_path(lower_path) {
+        15
+    } else {
+        0
+    }
+}
+
+fn apply_risk_penalty(score: u8, penalty: u8) -> u8 {
+    score.saturating_sub(penalty)
+}
+
+fn is_python_site_packages_path(lower_path: &str) -> bool {
+    let mut segments = lower_path.split('/');
+    while let Some(segment) = segments.next() {
+        if segment == "lib" {
+            let Some(python_segment) = segments.next() else {
+                continue;
+            };
+            let Some(site_packages_segment) = segments.next() else {
+                continue;
+            };
+            if python_segment.starts_with("python") && site_packages_segment == "site-packages" {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn is_database_uri_pattern(pattern_id: &str) -> bool {
