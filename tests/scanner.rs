@@ -119,6 +119,28 @@ fn detects_database_connection_strings_with_passwords_as_medium_risk() {
 }
 
 #[test]
+fn scores_hostless_postgres_uri_as_low_risk() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("dataset.py"),
+        "ds = Dataset.from_sql(\"test_data\", \"postgres:///db_name\")\n",
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    opts.redact = false;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    let finding = result
+        .findings
+        .iter()
+        .find(|f| f.finding_type == "postgres_uri" && f.secret == "postgres:///db_name")
+        .expect("expected hostless postgres URI finding");
+
+    assert_eq!(finding.risk_score, 20);
+}
+
+#[test]
 fn lowers_redis_localhost_uri_risk() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(
@@ -205,21 +227,13 @@ fn lowers_risk_for_python_site_packages_files() {
     let mut opts = options();
     opts.min_risk = 0;
     let result = scan_path(dir.path(), &opts).unwrap();
-    let project_finding = result
-        .findings
-        .iter()
-        .find(|f| f.file_path == "project_module.py")
-        .expect("expected project finding");
     let site_packages_finding = result
         .findings
         .iter()
         .find(|f| f.file_path == "lib/python3.11/site-packages/vendor_pkg/module.py")
         .expect("expected site-packages finding");
 
-    assert_eq!(
-        site_packages_finding.risk_score,
-        project_finding.risk_score - 15
-    );
+    assert_eq!(site_packages_finding.risk_score, 20);
 }
 
 #[test]

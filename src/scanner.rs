@@ -346,10 +346,12 @@ fn risk_score(
     start_idx: usize,
 ) -> u8 {
     let lower_path = file_path.to_ascii_lowercase();
-    let path_penalty = path_risk_penalty(&lower_path);
 
     if pattern_id == "taiwan_mobile" {
-        return apply_risk_penalty(taiwan_mobile_risk_score(base, secret), path_penalty);
+        return path_adjusted_base_score(taiwan_mobile_risk_score(base, secret), &lower_path);
+    }
+    if pattern_id == "postgres_uri" && is_hostless_postgres_uri(secret) {
+        return path_adjusted_base_score(20, &lower_path);
     }
 
     // Placeholders and documentation examples are rated as Low risk (30)
@@ -362,10 +364,10 @@ fn risk_score(
 
     if is_placeholder || is_doc_example {
         // Never inflate a pattern whose base score is already below 30
-        return apply_risk_penalty(base.min(30), path_penalty);
+        return path_adjusted_base_score(base.min(30), &lower_path);
     }
 
-    let mut score = i16::from(base) - i16::from(path_penalty);
+    let mut score = i16::from(path_adjusted_base_score(base, &lower_path));
     if lower_path.ends_with(".env") || lower_path.contains(".env.") {
         score += 8;
     }
@@ -492,16 +494,12 @@ fn risk_score(
     score.clamp(0, 100) as u8
 }
 
-fn path_risk_penalty(lower_path: &str) -> u8 {
+fn path_adjusted_base_score(base: u8, lower_path: &str) -> u8 {
     if is_python_site_packages_path(lower_path) {
-        15
+        20
     } else {
-        0
+        base
     }
-}
-
-fn apply_risk_penalty(score: u8, penalty: u8) -> u8 {
-    score.saturating_sub(penalty)
 }
 
 fn is_python_site_packages_path(lower_path: &str) -> bool {
@@ -533,6 +531,13 @@ fn has_local_uri_host(secret: &str) -> bool {
         .is_some_and(|host| {
             host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "0.0.0.0"
         })
+}
+
+fn is_hostless_postgres_uri(secret: &str) -> bool {
+    Url::parse(secret)
+        .ok()
+        .filter(|url| matches!(url.scheme(), "postgres" | "postgresql"))
+        .is_some_and(|url| url.host_str().is_none())
 }
 
 fn taiwan_mobile_risk_score(base: u8, secret: &str) -> u8 {
