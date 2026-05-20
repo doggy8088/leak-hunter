@@ -129,7 +129,10 @@ fn detects_taiwan_citizen_certificate() {
     )
     .unwrap();
 
-    let result = scan_path(dir.path(), &options()).unwrap();
+    // Base is now 30, so use min_risk=0 to capture it without any keyword context
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
     let findings: Vec<_> = result
         .findings
         .iter()
@@ -138,6 +141,68 @@ fn detects_taiwan_citizen_certificate() {
 
     assert_eq!(findings.len(), 1);
     assert_eq!(findings[0].secret, "AB…34");
+    // No keywords in context → base score only
+    assert_eq!(
+        findings[0].risk_score, 30,
+        "Without any keywords, citizen certificate should score 30 (base only)"
+    );
+}
+
+#[test]
+fn taiwan_citizen_certificate_additive_keyword_scoring() {
+    let dir = tempfile::tempdir().unwrap();
+
+    // 1. "自然人憑證" → base(30) + 自然人憑證(+30) + 自然人(+10) + 憑證(+10) = 80
+    std::fs::write(
+        dir.path().join("full_phrase.txt"),
+        "自然人憑證號碼: AB12345678901234",
+    )
+    .unwrap();
+
+    // 2. Only "自然人" → base(30) + 自然人(+10) = 40
+    std::fs::write(
+        dir.path().join("only_ziran.txt"),
+        "這是自然人的資料 AB12345678901234",
+    )
+    .unwrap();
+
+    // 3. Only "憑證" → base(30) + 憑證(+10) = 40
+    std::fs::write(
+        dir.path().join("only_cert.txt"),
+        "憑證編號: AB12345678901234",
+    )
+    .unwrap();
+
+    // 4. No keywords → base(30)
+    std::fs::write(
+        dir.path().join("no_kw.txt"),
+        "Certificate number: AB12345678901234",
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+
+    let get_score = |filename: &str| -> u8 {
+        result
+            .findings
+            .iter()
+            .find(|f| {
+                f.finding_type == "taiwan_citizen_certificate" && f.file_path.contains(filename)
+            })
+            .map(|f| f.risk_score)
+            .unwrap_or(0)
+    };
+
+    assert_eq!(
+        get_score("full_phrase"),
+        80,
+        "自然人憑證 → 30+30+10+10 = 80"
+    );
+    assert_eq!(get_score("only_ziran"), 40, "自然人 only → 30+10 = 40");
+    assert_eq!(get_score("only_cert"), 40, "憑證 only → 30+10 = 40");
+    assert_eq!(get_score("no_kw"), 30, "no keywords → 30");
 }
 
 #[test]

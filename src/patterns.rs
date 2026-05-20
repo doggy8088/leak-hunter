@@ -493,7 +493,7 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             "taiwan_citizen_certificate",
             "Taiwan Citizen Digital Certificate Number",
             r"\b(?P<secret>[A-Z]{2}\d{14})\b",
-            60,
+            30,
         ),
     ]
 });

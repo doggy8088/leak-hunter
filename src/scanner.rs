@@ -377,7 +377,10 @@ fn risk_score(
     }
     let lower_text = text.to_ascii_lowercase();
     if lower_text.contains("public key") || lower_text.contains("certificate") {
-        score -= 10;
+        // Don't penalise the citizen certificate pattern itself for containing the word "certificate"
+        if pattern_id != "taiwan_citizen_certificate" {
+            score -= 10;
+        }
     }
     if pattern_id == "google_api_key"
         && (lower_path.contains("firebase")
@@ -404,64 +407,76 @@ fn risk_score(
         }
         let surrounding = text[start_ctx..end_ctx].to_lowercase();
 
-        let kws = match pattern_id {
-            "taiwan_national_id" => vec![
-                "身分證",
-                "身分證字號",
-                "national id",
-                "identity card",
-                "國民身分證",
-                "身分證統一編號",
-                "id",
-            ],
-            "taiwan_arc_ui" => vec!["統一證號", "居留證", "arc", "aprc", "resident certificate"],
-            "taiwan_mobile" => vec!["手機", "電話", "mobile", "cellphone", "phone"],
-            "taiwan_einvoice_barcode" => vec![
-                "載具",
-                "手機條碼",
-                "條碼",
-                "barcode",
-                "einvoice",
-                "e-invoice",
-            ],
-            "taiwan_citizen_certificate" => vec![
-                "自然人憑證",
-                "憑證",
-                "citizen certificate",
-                "digital certificate",
-            ],
-            _ => vec![],
-        };
+        // taiwan_citizen_certificate uses additive scoring per keyword
+        if pattern_id == "taiwan_citizen_certificate" {
+            // +30 if the full phrase "自然人憑證" is present
+            if surrounding.contains("自然人憑證") {
+                score += 30;
+            }
+            // +10 if "自然人" is present (independently, even as part of 自然人憑證)
+            if surrounding.contains("自然人") {
+                score += 10;
+            }
+            // +10 if "憑證" is present (independently, even as part of 自然人憑證)
+            if surrounding.contains("憑證") {
+                score += 10;
+            }
+        } else {
+            let kws = match pattern_id {
+                "taiwan_national_id" => vec![
+                    "身分證",
+                    "身分證字號",
+                    "national id",
+                    "identity card",
+                    "國民身分證",
+                    "身分證統一編號",
+                    "id",
+                ],
+                "taiwan_arc_ui" => {
+                    vec!["統一證號", "居留證", "arc", "aprc", "resident certificate"]
+                }
+                "taiwan_mobile" => vec!["手機", "電話", "mobile", "cellphone", "phone"],
+                "taiwan_einvoice_barcode" => vec![
+                    "載具",
+                    "手機條碼",
+                    "條碼",
+                    "barcode",
+                    "einvoice",
+                    "e-invoice",
+                ],
+                _ => vec![],
+            };
 
-        let mut has_kw = false;
-        for kw in kws {
-            if kw == "id" || kw == "arc" || kw == "aprc" {
-                let bytes = surrounding.as_bytes();
-                let mut start = 0;
-                while let Some(pos) = surrounding[start..].find(kw) {
-                    let idx = start + pos;
-                    let prev_ok = idx == 0
-                        || (!bytes[idx - 1].is_ascii_alphanumeric() && bytes[idx - 1] != b'_');
-                    let next_ok = idx + kw.len() == bytes.len()
-                        || (!bytes[idx + kw.len()].is_ascii_alphanumeric()
-                            && bytes[idx + kw.len()] != b'_');
-                    if prev_ok && next_ok {
-                        has_kw = true;
+            let mut has_kw = false;
+            for kw in kws {
+                if kw == "id" || kw == "arc" || kw == "aprc" {
+                    let bytes = surrounding.as_bytes();
+                    let mut start = 0;
+                    while let Some(pos) = surrounding[start..].find(kw) {
+                        let idx = start + pos;
+                        let prev_ok = idx == 0
+                            || (!bytes[idx - 1].is_ascii_alphanumeric() && bytes[idx - 1] != b'_');
+                        let next_ok = idx + kw.len() == bytes.len()
+                            || (!bytes[idx + kw.len()].is_ascii_alphanumeric()
+                                && bytes[idx + kw.len()] != b'_');
+                        if prev_ok && next_ok {
+                            has_kw = true;
+                            break;
+                        }
+                        start = idx + kw.len();
+                    }
+                    if has_kw {
                         break;
                     }
-                    start = idx + kw.len();
-                }
-                if has_kw {
+                } else if surrounding.contains(kw) {
+                    has_kw = true;
                     break;
                 }
-            } else if surrounding.contains(kw) {
-                has_kw = true;
-                break;
             }
-        }
 
-        if has_kw {
-            score += 15;
+            if has_kw {
+                score += 15;
+            }
         }
     }
 
