@@ -178,3 +178,68 @@ fn include_exclude_and_skip_accounting_match_options() {
     assert_eq!(result.summary.files_enumerated, 1);
     assert_eq!(result.summary.skipped_too_large, 1);
 }
+
+#[test]
+fn test_database_connection_string_filtering_and_placeholders() {
+    let dir = tempfile::tempdir().unwrap();
+
+    // 1a. Placeholder: Password=your-password — should score 30 (Low) via is_likely_placeholder
+    std::fs::write(
+        dir.path().join("placeholder_conn_a.txt"),
+        "Server=tcp:127.0.0.1;Database=MyDatabase;User Id=sa;Password=your-password;",
+    )
+    .unwrap();
+
+    // 1b. Placeholder: Password=YourStrong@Passw0rd — well-known Docker example password
+    //     Use the prefix-key form so the first regex branch fires: key=val;...Password=val;key=val
+    std::fs::write(
+        dir.path().join("placeholder_conn_b.txt"),
+        "Server=localhost,1433;Database=dev;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=true;",
+    )
+    .unwrap();
+
+    // 2. C# code lines that merely mention Password should NOT be found as connection strings
+    std::fs::write(
+        dir.path().join("code_false_positives.cs"),
+        "var hashedPassword = BCrypt.Net.BCrypt.HashPassword(model.Password);\n\
+         string newPassword = _tool.GetNewPassword();\n\
+         var newUser = new EnterpriseUser { EnterpriseId = 123 };",
+    )
+    .unwrap();
+
+    // min-risk 40: nothing shown (placeholders = 30, code lines = filtered out entirely)
+    let mut opts = options();
+    opts.min_risk = 40;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    assert_eq!(
+        result.findings.len(),
+        0,
+        "Expected 0 findings at min-risk 40, got {:?}",
+        result.findings
+    );
+
+    // min-risk 30: exactly 2 placeholder connection string findings, each scored 30
+    let mut opts_30 = options();
+    opts_30.min_risk = 30;
+    let result_30 = scan_path(dir.path(), &opts_30).unwrap();
+
+    let conn_findings: Vec<_> = result_30
+        .findings
+        .iter()
+        .filter(|f| f.finding_type == "database_connection_string")
+        .collect();
+
+    assert_eq!(
+        conn_findings.len(),
+        2,
+        "Expected 2 placeholder conn-string findings at min-risk 30, got {:?}",
+        conn_findings
+    );
+    for f in conn_findings {
+        assert_eq!(
+            f.risk_score, 30,
+            "Placeholder conn-string should score 30, got {}",
+            f.risk_score
+        );
+    }
+}

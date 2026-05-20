@@ -321,11 +321,12 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             r#"(?i)HEROKU_API_KEY\s*[:=]\s*[\"']?(?P<secret>[A-Za-z0-9-]{20,})[\"']?"#,
             85,
         ),
-        SecretPattern::new(
+        SecretPattern::new_with_validator(
             "database_connection_string",
             "Database Connection String",
-            r#"(?i)(?P<secret>(?:[A-Za-z][A-Za-z0-9 _.-]{0,40}\s*=\s*[^;"'\r\n]*\s*;){1,20}\s*(?:Password|Pwd)\s*=\s*[^;"'\r\n]{6,}(?:\s*;\s*[A-Za-z][A-Za-z0-9 _.-]{0,40}\s*=\s*[^;"'\r\n]*){0,20}|(?:Password|Pwd)\s*=\s*[^;"'\r\n]{6,}(?:\s*;\s*[A-Za-z][A-Za-z0-9 _.-]{0,40}\s*=\s*[^;"'\r\n]*){1,20})"#,
+            r#"(?i)(?P<secret>(?:[A-Za-z][A-Za-z0-9 _.-]{0,40}\s*=\s*[^;"'\r\n]*\s*;){1,20}\s*\b(?:Password|Pwd)\b\s*=\s*[^;"'\r\n]{6,}(?:\s*;\s*[A-Za-z][A-Za-z0-9 _.-]{0,40}\s*=\s*[^;"'\r\n]*){0,20}|\b(?:Password|Pwd)\b\s*=\s*[^;"'\r\n]{6,}(?:\s*;\s*[A-Za-z][A-Za-z0-9 _.-]{0,40}\s*=\s*[^;"'\r\n]*){1,20})"#,
             80,
+            is_valid_database_connection_string,
         ),
         SecretPattern::new(
             "postgres_uri",
@@ -427,6 +428,118 @@ pub fn is_likely_placeholder(secret: &str) -> bool {
     WEAK_SECRET_RE.is_match(trimmed)
         || has_repeated_single_char_body(trimmed)
         || is_taiwan_placeholder(trimmed)
+        || contains_placeholder_password(trimmed)
+}
+
+pub fn is_weak_password_val(val: &str) -> bool {
+    let val = val.trim().to_ascii_lowercase();
+    val.is_empty()
+        || val == "password"
+        || val == "your-password"
+        || val == "your_password"
+        || val == "yourpassword"
+        || val == "yourstrong@passw0rd"
+        || val == "mypassword"
+        || val == "secret"
+        || val == "dbpassword"
+        || val == "change_me"
+        || val == "changeme"
+        || val == "placeholder"
+        || val == "admin"
+        || val == "sa"
+        || val == "root"
+        || val.contains("example")
+        || val.contains("dummy")
+        || val.contains("sample")
+        || val.starts_with('<') && val.ends_with('>')
+        || val.starts_with('[') && val.ends_with(']')
+        || val.starts_with('{') && val.ends_with('}')
+}
+
+pub fn contains_placeholder_password(conn_str: &str) -> bool {
+    let lower_conn = conn_str.to_ascii_lowercase();
+    if let Some(pos) = lower_conn.find("password") {
+        let suffix = &lower_conn[pos + "password".len()..];
+        let trimmed_suffix = suffix.trim_start();
+        if trimmed_suffix.starts_with('=') {
+            let val_part = &trimmed_suffix[1..];
+            let val = val_part
+                .split(';')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .trim_matches(['\"', '\'', '`']);
+            if is_weak_password_val(val) {
+                return true;
+            }
+        }
+    }
+    if let Some(pos) = lower_conn.find("pwd") {
+        let suffix = &lower_conn[pos + "pwd".len()..];
+        let trimmed_suffix = suffix.trim_start();
+        if trimmed_suffix.starts_with('=') {
+            let val_part = &trimmed_suffix[1..];
+            let val = val_part
+                .split(';')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .trim_matches(['\"', '\'', '`']);
+            if is_weak_password_val(val) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+pub fn is_valid_database_connection_string(conn_str: &str) -> bool {
+    let lower = conn_str.to_ascii_lowercase();
+    let mut has_db_keyword = false;
+    let mut has_invalid_code_patterns = false;
+
+    for part in lower.split(';') {
+        let trimmed = part.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Some(eq_idx) = trimmed.find('=') {
+            let key = trimmed[..eq_idx].trim();
+            let val = trimmed[eq_idx + 1..].trim();
+
+            if key.starts_with("var ")
+                || key.starts_with("string ")
+                || key.starts_with("let ")
+                || key.starts_with("const ")
+                || key.starts_with("public ")
+                || key.starts_with("private ")
+                || key.contains('(')
+                || key.contains(')')
+            {
+                has_invalid_code_patterns = true;
+                break;
+            }
+
+            if val.contains("await ")
+                || val.contains("getnewpassword")
+                || val.contains("hashpassword")
+            {
+                has_invalid_code_patterns = true;
+                break;
+            }
+
+            match key {
+                "server" | "host" | "data source" | "datasource" | "address" | "addr" | "port"
+                | "database" | "initial catalog" | "db" | "user id" | "userid" | "uid" | "user"
+                | "username" | "password" | "pwd" => {
+                    has_db_keyword = true;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    has_db_keyword && !has_invalid_code_patterns
 }
 
 pub fn is_taiwan_placeholder(secret: &str) -> bool {
