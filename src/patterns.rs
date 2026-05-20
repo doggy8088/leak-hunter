@@ -169,6 +169,85 @@ pub fn is_valid_taiwan_einvoice_barcode(barcode: &str) -> bool {
     true
 }
 
+pub fn is_valid_azure_sas_uri(uri: &str) -> bool {
+    let lower = uri.to_ascii_lowercase();
+
+    // 1. Must be an Azure Blob / Azure Storage domain.
+    //    Google Forms, GitHub, etc. may also carry sv= / sig= params — ignore them.
+    let is_azure_domain = lower.contains(".blob.core.windows.net")
+        || lower.contains(".file.core.windows.net")
+        || lower.contains(".queue.core.windows.net")
+        || lower.contains(".table.core.windows.net")
+        || lower.contains(".dfs.core.windows.net");
+    if !is_azure_domain {
+        return false;
+    }
+
+    // 2. Reject if the hostname contains placeholder tokens like YOUR_ACCOUNT, {account}, etc.
+    let hostname = lower.split('/').nth(2).unwrap_or("");
+    if hostname.contains("your_account")
+        || hostname.contains("your-account")
+        || hostname.contains("youraccount")
+        || hostname.contains("{account}")
+        || hostname.contains("<account>")
+        || hostname.contains("[account]")
+        || hostname.starts_with("account.")
+    {
+        return false;
+    }
+
+    // 3. The query string must exist and `sig=` must be present.
+    let query = match lower.split_once('?') {
+        Some((_, q)) => q,
+        None => return false,
+    };
+
+    let has_sig = query.split('&').any(|p| p.starts_with("sig="));
+    if !has_sig {
+        // No sig= at all → not a real SAS URI (just a URL with sv= or sp=)
+        return false;
+    }
+
+    // 4. sig= value must not be a placeholder ("...", "xxx", template variables, etc.)
+    for part in query.split('&') {
+        if let Some(val) = part.strip_prefix("sig=") {
+            let val = val.trim();
+            // Ellipsis-only or empty → placeholder
+            if val.is_empty() || val == "..." || val == ".." || val == "." {
+                return false;
+            }
+            // Looks like a template variable: {sig}, <sig>, [sig]
+            if (val.starts_with('{') && val.ends_with('}'))
+                || (val.starts_with('<') && val.ends_with('>'))
+                || (val.starts_with('[') && val.ends_with(']'))
+            {
+                return false;
+            }
+            // Contains "your" prefix → placeholder
+            if val.to_ascii_lowercase().starts_with("your") {
+                return false;
+            }
+            // Real SAS sig is a Base64-like string, typically 40+ chars
+            // If shorter than 20 chars after URL-decoding estimate, treat as placeholder
+            let decoded_estimate = val
+                .replace("%2b", "+")
+                .replace("%2f", "/")
+                .replace("%3d", "=");
+            if decoded_estimate.len() < 20 {
+                return false;
+            }
+        }
+    }
+
+    // 5. The URL must not be split across multiple lines.
+    //    A real SAS URI should be on a single line (no whitespace in the URL itself).
+    if uri.contains('\n') || uri.contains('\r') {
+        return false;
+    }
+
+    true
+}
+
 pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
     vec![
         SecretPattern::new(
@@ -279,11 +358,12 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             r"(?i)AccountKey\s*=\s*(?P<secret>[A-Za-z0-9+/]{86}==)",
             90,
         ),
-        SecretPattern::new(
+        SecretPattern::new_with_validator(
             "azure_sas_uri",
             "Azure SAS URI",
-            r#"(?i)\b(?P<secret>https?://[^\s"'`<>]+\?[^\s"'`<>]*(?:sv|se|sp|sig)=[^\s"'`<>]+)"#,
+            r#"(?i)\b(?P<secret>https?://[^\s"'`<>]+\.(?:blob|file|queue|table|dfs)\.core\.windows\.net/[^\s"'`<>]*\?[^\s"'`<>]*(?:sv|se|sp|sig)=[^\s"'`<>]+)"#,
             90,
+            is_valid_azure_sas_uri,
         ),
         SecretPattern::new(
             "framework_app_secret_context",

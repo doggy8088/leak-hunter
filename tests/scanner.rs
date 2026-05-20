@@ -243,3 +243,65 @@ fn test_database_connection_string_filtering_and_placeholders() {
         );
     }
 }
+
+#[test]
+fn azure_sas_uri_detects_real_token_and_filters_false_positives() {
+    let dir = tempfile::tempdir().unwrap();
+
+    // 1. Real SAS URI — must be found (Critical)
+    let real_sig = "okgvvstSI4fFkTnnYtQsPuE0l0MfHuEG9i%2BOXJ1J1j8%3D"; // synthetic, 40+ chars
+    std::fs::write(
+        dir.path().join("real_sas.env"),
+        format!(
+            "AZURE_BLOB_SAS_URL=https://myaccount.blob.core.windows.net/container?sv=2024-01-01&sp=racwl&sig={real_sig}\n"
+        ),
+    )
+    .unwrap();
+
+    // 2. Placeholder sig ("...") — must NOT be found
+    std::fs::write(
+        dir.path().join("placeholder_sig.ts"),
+        "const AZURE_BLOB_SAS_URL = 'https://myaccount.blob.core.windows.net/container?sv=...&sig=...';\n",
+    )
+    .unwrap();
+
+    // 3. YOUR_ACCOUNT hostname placeholder — must NOT be found
+    std::fs::write(
+        dir.path().join("placeholder_host.ts"),
+        "const SAS = 'https://YOUR_ACCOUNT.blob.core.windows.net/short-urls?sv=2024&sig=...';\n",
+    )
+    .unwrap();
+
+    // 4. Non-Azure domain with sv/sig params (e.g. Google Forms) — must NOT be found
+    std::fs::write(
+        dir.path().join("google_forms.html"),
+        "<a href=\"https://docs.google.com/forms/d/e/abc?sv=v1&sig=xyz123\">feedback</a>\n",
+    )
+    .unwrap();
+
+    // 5. Multi-line / broken SAS URL — must NOT be found
+    std::fs::write(
+        dir.path().join("broken_url.md"),
+        "https://myaccount.blob.core.windows.net/container?sv=2024\n&sig=okgvvstSI4fFkTnnYtQsPuE0l0MfHuEG9i\n",
+    )
+    .unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    let sas_findings: Vec<_> = result
+        .findings
+        .iter()
+        .filter(|f| f.finding_type == "azure_sas_uri")
+        .collect();
+
+    assert_eq!(
+        sas_findings.len(),
+        1,
+        "Expected exactly 1 real SAS finding, got {:?}",
+        sas_findings
+    );
+    assert!(
+        sas_findings[0].risk_score >= 90,
+        "Real SAS URI should be Critical (>=90), got {}",
+        sas_findings[0].risk_score
+    );
+}
