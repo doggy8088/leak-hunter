@@ -49,7 +49,9 @@ jobs:
   plan:
     runs-on: "ubuntu-22.04"
     outputs:
-      val: ${{ steps.plan.outputs.manifest }}
+      artifacts-matrix: ${{ steps.plan.outputs.artifacts-matrix }}
+      has-local-artifacts: ${{ steps.plan.outputs.has-local-artifacts }}
+      pr-run-mode: ${{ steps.plan.outputs.pr-run-mode }}
       tag: ${{ !github.event.pull_request && github.ref_name || '' }}
       tag-flag: ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }}
       publishing: ${{ !github.event.pull_request }}
@@ -80,7 +82,13 @@ jobs:
           dist ${{ (!github.event.pull_request && format('host --steps=create --tag={0}', github.ref_name)) || 'plan' }} --output-format=json > plan-dist-manifest.json
           echo "dist ran successfully"
           cat plan-dist-manifest.json
-          echo "manifest=$(jq -c "." plan-dist-manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "artifacts-matrix=$(jq -c ".ci.github.artifacts_matrix" plan-dist-manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "pr-run-mode=$(jq -r ".ci.github.pr_run_mode // empty" plan-dist-manifest.json)" >> "$GITHUB_OUTPUT"
+          if jq -e ".ci.github.artifacts_matrix.include != null" plan-dist-manifest.json > /dev/null; then
+            echo "has-local-artifacts=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-local-artifacts=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: "Upload dist-manifest.json"
         uses: actions/upload-artifact@v4
         with:
@@ -93,7 +101,7 @@ jobs:
     # Let the initial task tell us to not run (currently very blunt)
     needs:
       - plan
-    if: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix.include != null && (needs.plan.outputs.publishing == 'true' || fromJson(needs.plan.outputs.val).ci.github.pr_run_mode == 'upload') }}
+    if: ${{ needs.plan.outputs.has-local-artifacts == 'true' && (needs.plan.outputs.publishing == 'true' || needs.plan.outputs.pr-run-mode == 'upload') }}
     strategy:
       fail-fast: false
       # Target platforms/runners are computed by dist in create-release.
@@ -106,7 +114,7 @@ jobs:
       # Typically there will be:
       # - 1 "global" task that builds universal installers
       # - N "local" tasks that build each platform's binaries and platform-specific installers
-      matrix: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix }}
+      matrix: ${{ fromJson(needs.plan.outputs.artifacts-matrix) }}
     runs-on: ${{ matrix.runner }}
     container: ${{ matrix.container && matrix.container.image || null }}
     env:
