@@ -264,11 +264,23 @@ fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
             let m = caps.name("secret").or_else(|| caps.get(0));
             let Some(secret_match) = m else { continue };
             let secret = secret_match.as_str();
+            if let Some(validator) = pattern.validator {
+                if !validator(secret) {
+                    continue;
+                }
+            }
             if should_suppress(&rel, &text, secret) {
                 continue;
             }
             let secret_entropy = entropy(secret);
-            let risk = risk_score(pattern.id, pattern.base_risk, secret, &rel, &text);
+            let risk = risk_score(
+                pattern.id,
+                pattern.base_risk,
+                secret,
+                &rel,
+                &text,
+                secret_match.start(),
+            );
             if options.debug {
                 eprintln!(
                     "[debug] candidate finding: file={rel} type={} risk={} entropy={:.2}",
@@ -285,7 +297,7 @@ fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
                 continue;
             }
             let (line, column) = line_column(&text, secret_match.start());
-            let snippet = line_snippet(&text, line, options.redact, secret);
+            let snippet = line_snippet(&text, line, options.redact, secret, pattern.id);
             findings.push(Finding {
                 finding_type: pattern.id.to_string(),
                 title: pattern.title.to_string(),
@@ -296,7 +308,7 @@ fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
                 entropy: secret_entropy,
                 secret_hash: secret_hash(secret),
                 secret: if options.redact {
-                    redact_secret(secret)
+                    redact_secret_for_pattern(pattern.id, secret)
                 } else {
                     secret.to_string()
                 },
@@ -316,29 +328,37 @@ fn is_binary(bytes: &[u8]) -> bool {
     bytes.iter().take(8192).any(|b| *b == 0)
 }
 
-fn should_suppress(file_path: &str, text: &str, secret: &str) -> bool {
+fn should_suppress(file_path: &str, text: &str, _secret: &str) -> bool {
     let lower = file_path.to_ascii_lowercase();
-    if is_likely_placeholder(secret) {
-        return true;
-    }
     if lower.ends_with("package-lock.json") && text.contains("\"integrity\"") {
         return true;
-    }
-    if lower.contains("readme")
-        || lower.contains("docs/")
-        || lower.contains("documentation")
-        || lower.contains("guide")
-    {
-        if secret.contains("example") || secret.contains("sample") || secret.contains("dummy") {
-            return true;
-        }
     }
     false
 }
 
-fn risk_score(pattern_id: &str, base: u8, secret: &str, file_path: &str, text: &str) -> u8 {
-    let mut score = i16::from(base);
+fn risk_score(
+    pattern_id: &str,
+    base: u8,
+    secret: &str,
+    file_path: &str,
+    text: &str,
+    start_idx: usize,
+) -> u8 {
     let lower_path = file_path.to_ascii_lowercase();
+
+    // Placeholders and documentation examples are rated as Low risk (30)
+    let is_placeholder = is_likely_placeholder(secret);
+    let is_doc_example = (lower_path.contains("readme")
+        || lower_path.contains("docs/")
+        || lower_path.contains("documentation")
+        || lower_path.contains("guide"))
+        && (secret.contains("example") || secret.contains("sample") || secret.contains("dummy"));
+
+    if is_placeholder || is_doc_example {
+        return 30;
+    }
+
+    let mut score = i16::from(base);
     if lower_path.ends_with(".env") || lower_path.contains(".env.") {
         score += 8;
     }
@@ -369,6 +389,81 @@ fn risk_score(pattern_id: &str, base: u8, secret: &str, file_path: &str, text: &
     if pattern_id == "aws_access_key_id" && lower_text.contains("secret_access_key") {
         score += 10;
     }
+
+    // Taiwan PDPA Contextual Risk Adjustments
+    if pattern_id.starts_with("taiwan_") {
+        let context_window = 150;
+        let mut start_ctx = start_idx.saturating_sub(context_window);
+        while start_ctx > 0 && !text.is_char_boundary(start_ctx) {
+            start_ctx -= 1;
+        }
+        let mut end_ctx = (start_idx + secret.len() + context_window).min(text.len());
+        while end_ctx < text.len() && !text.is_char_boundary(end_ctx) {
+            end_ctx += 1;
+        }
+        let surrounding = text[start_ctx..end_ctx].to_lowercase();
+
+        let kws = match pattern_id {
+            "taiwan_national_id" => vec![
+                "身分證",
+                "身分證字號",
+                "national id",
+                "identity card",
+                "國民身分證",
+                "身分證統一編號",
+                "id",
+            ],
+            "taiwan_arc_ui" => vec!["統一證號", "居留證", "arc", "aprc", "resident certificate"],
+            "taiwan_mobile" => vec!["手機", "電話", "mobile", "cellphone", "phone"],
+            "taiwan_einvoice_barcode" => vec![
+                "載具",
+                "手機條碼",
+                "條碼",
+                "barcode",
+                "einvoice",
+                "e-invoice",
+            ],
+            "taiwan_citizen_certificate" => vec![
+                "自然人憑證",
+                "憑證",
+                "citizen certificate",
+                "digital certificate",
+            ],
+            _ => vec![],
+        };
+
+        let mut has_kw = false;
+        for kw in kws {
+            if kw == "id" || kw == "arc" || kw == "aprc" {
+                let bytes = surrounding.as_bytes();
+                let mut start = 0;
+                while let Some(pos) = surrounding[start..].find(kw) {
+                    let idx = start + pos;
+                    let prev_ok = idx == 0
+                        || (!bytes[idx - 1].is_ascii_alphanumeric() && bytes[idx - 1] != b'_');
+                    let next_ok = idx + kw.len() == bytes.len()
+                        || (!bytes[idx + kw.len()].is_ascii_alphanumeric()
+                            && bytes[idx + kw.len()] != b'_');
+                    if prev_ok && next_ok {
+                        has_kw = true;
+                        break;
+                    }
+                    start = idx + kw.len();
+                }
+                if has_kw {
+                    break;
+                }
+            } else if surrounding.contains(kw) {
+                has_kw = true;
+                break;
+            }
+        }
+
+        if has_kw {
+            score += 15;
+        }
+    }
+
     score.clamp(0, 100) as u8
 }
 
@@ -395,14 +490,20 @@ fn line_column(text: &str, byte_offset: usize) -> (usize, usize) {
     (line, column)
 }
 
-fn line_snippet(text: &str, line_number: usize, redact: bool, secret: &str) -> String {
+fn line_snippet(
+    text: &str,
+    line_number: usize,
+    redact: bool,
+    secret: &str,
+    pattern_id: &str,
+) -> String {
     let line = text
         .lines()
         .nth(line_number.saturating_sub(1))
         .unwrap_or_default()
         .trim();
     let snippet = if redact {
-        line.replace(secret, &redact_secret(secret))
+        line.replace(secret, &redact_secret_for_pattern(pattern_id, secret))
     } else {
         line.to_string()
     };
@@ -434,4 +535,24 @@ pub fn redact_secret(secret: &str) -> String {
         .rev()
         .collect();
     format!("{start}…{end}")
+}
+
+pub fn redact_secret_for_pattern(pattern_id: &str, secret: &str) -> String {
+    if pattern_id.starts_with("taiwan_") {
+        if secret.len() <= 4 {
+            return "[REDACTED]".to_string();
+        }
+        let start: String = secret.chars().take(2).collect();
+        let end: String = secret
+            .chars()
+            .rev()
+            .take(2)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
+        format!("{start}…{end}")
+    } else {
+        redact_secret(secret)
+    }
 }

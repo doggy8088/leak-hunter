@@ -7,6 +7,7 @@ pub struct SecretPattern {
     pub title: &'static str,
     pub regex: Regex,
     pub base_risk: u8,
+    pub validator: Option<fn(&str) -> bool>,
 }
 
 impl SecretPattern {
@@ -16,7 +17,132 @@ impl SecretPattern {
             title,
             regex: Regex::new(pattern).expect("built-in regex must compile"),
             base_risk,
+            validator: None,
         }
+    }
+
+    fn new_with_validator(
+        id: &'static str,
+        title: &'static str,
+        pattern: &'static str,
+        base_risk: u8,
+        validator: fn(&str) -> bool,
+    ) -> Self {
+        Self {
+            id,
+            title,
+            regex: Regex::new(pattern).expect("built-in regex must compile"),
+            base_risk,
+            validator: Some(validator),
+        }
+    }
+}
+
+fn roc_letter_val(c: char) -> Option<u32> {
+    match c {
+        'A' => Some(10),
+        'B' => Some(11),
+        'C' => Some(12),
+        'D' => Some(13),
+        'E' => Some(14),
+        'F' => Some(15),
+        'G' => Some(16),
+        'H' => Some(17),
+        'I' => Some(34),
+        'J' => Some(18),
+        'K' => Some(19),
+        'L' => Some(20),
+        'M' => Some(21),
+        'N' => Some(22),
+        'O' => Some(35),
+        'P' => Some(23),
+        'Q' => Some(24),
+        'R' => Some(25),
+        'S' => Some(26),
+        'T' => Some(27),
+        'U' => Some(28),
+        'V' => Some(29),
+        'W' => Some(32),
+        'X' => Some(30),
+        'Y' => Some(31),
+        'Z' => Some(33),
+        _ => None,
+    }
+}
+
+pub fn is_valid_taiwan_national_id(id: &str) -> bool {
+    let id = id.trim().to_ascii_uppercase();
+    if id.len() != 10 {
+        return false;
+    }
+    let mut chars = id.chars();
+    let first_char = chars.next().unwrap();
+    let letter_val = match roc_letter_val(first_char) {
+        Some(v) => v,
+        None => return false,
+    };
+
+    let d1 = letter_val / 10;
+    let d2 = letter_val % 10;
+
+    let mut sum = d1 * 1 + d2 * 9;
+
+    let weights = [8, 7, 6, 5, 4, 3, 2, 1, 1];
+    for (i, c) in chars.enumerate() {
+        if let Some(digit) = c.to_digit(10) {
+            sum += digit * weights[i];
+        } else {
+            return false;
+        }
+    }
+
+    sum % 10 == 0
+}
+
+pub fn is_valid_taiwan_arc_ui(id: &str) -> bool {
+    let id = id.trim().to_ascii_uppercase();
+    if id.len() != 10 {
+        return false;
+    }
+    let chars: Vec<char> = id.chars().collect();
+
+    let first_char_val = match roc_letter_val(chars[0]) {
+        Some(v) => v,
+        None => return false,
+    };
+    let d1 = first_char_val / 10;
+    let d2 = first_char_val % 10;
+
+    if chars[1].is_ascii_digit() {
+        // New ARC/UI format: e.g., F801234564
+        let mut sum = d1 * 1 + d2 * 9;
+        let weights = [8, 7, 6, 5, 4, 3, 2, 1, 1];
+        for i in 0..9 {
+            if let Some(digit) = chars[i + 1].to_digit(10) {
+                sum += digit * weights[i];
+            } else {
+                return false;
+            }
+        }
+        sum % 10 == 0
+    } else {
+        // Old ARC format: e.g., FA12345670
+        let second_char_val = match roc_letter_val(chars[1]) {
+            Some(v) => v,
+            None => return false,
+        };
+        let d4 = second_char_val % 10;
+
+        let mut sum = d1 * 1 + d2 * 9 + d4 * 8;
+        let weights = [7, 6, 5, 4, 3, 2, 1, 1];
+        for i in 0..8 {
+            if let Some(digit) = chars[i + 2].to_digit(10) {
+                sum += digit * weights[i];
+            } else {
+                return false;
+            }
+        }
+        sum % 10 == 0
     }
 }
 
@@ -232,6 +358,38 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             r#""client_secret"\s*:\s*"(?P<secret>[^"]{8,})""#,
             80,
         ),
+        SecretPattern::new_with_validator(
+            "taiwan_national_id",
+            "Taiwan National ID",
+            r"\b(?P<secret>[A-Z][12]\d{8})\b",
+            85,
+            is_valid_taiwan_national_id,
+        ),
+        SecretPattern::new_with_validator(
+            "taiwan_arc_ui",
+            "Taiwan UI/ARC/APRC Number",
+            r"\b(?P<secret>[A-Z][89A-D]\d{8})\b",
+            85,
+            is_valid_taiwan_arc_ui,
+        ),
+        SecretPattern::new(
+            "taiwan_mobile",
+            "Taiwan Mobile Phone Number",
+            r"(?:^|[^A-Za-z0-9])(?P<secret>(?:\+886[-\s]?|0)9(?:[-\s]?\d){8})\b",
+            50,
+        ),
+        SecretPattern::new(
+            "taiwan_einvoice_barcode",
+            "Taiwan E-Invoice Mobile Barcode",
+            r#"(?:^|[^A-Za-z0-9])(?P<secret>/[A-Z0-9.+\-]{7})(?:\b|[^A-Z0-9.+\-])"#,
+            50,
+        ),
+        SecretPattern::new(
+            "taiwan_citizen_certificate",
+            "Taiwan Citizen Digital Certificate Number",
+            r"\b(?P<secret>[A-Z]{2}\d{14})\b",
+            60,
+        ),
     ]
 });
 
@@ -242,7 +400,43 @@ pub static WEAK_SECRET_RE: Lazy<Regex> = Lazy::new(|| {
 
 pub fn is_likely_placeholder(secret: &str) -> bool {
     let trimmed = secret.trim().trim_matches(['\"', '\'', '`']);
-    WEAK_SECRET_RE.is_match(trimmed) || has_repeated_single_char_body(trimmed)
+    WEAK_SECRET_RE.is_match(trimmed)
+        || has_repeated_single_char_body(trimmed)
+        || is_taiwan_placeholder(trimmed)
+}
+
+pub fn is_taiwan_placeholder(secret: &str) -> bool {
+    let normalized: String = secret
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '/')
+        .collect();
+
+    // Check Mobile placeholders
+    if normalized.starts_with("09") || normalized.starts_with("8869") {
+        let digits: String = normalized.chars().filter(|c| c.is_ascii_digit()).collect();
+        if digits.len() >= 10 {
+            if digits.contains("0912345678") || digits.contains("0987654321") {
+                return true;
+            }
+            let last_8 = &digits[digits.len() - 8..];
+            if last_8.chars().all(|c| c == last_8.chars().next().unwrap()) {
+                return true;
+            }
+        }
+    }
+
+    // Check E-Invoice barcode placeholders
+    if normalized.starts_with('/') && normalized.len() == 8 {
+        let body = &normalized[1..];
+        if body == "1234567" || body == "7654321" || body.to_ascii_lowercase() == "abc1234" {
+            return true;
+        }
+        if body.chars().all(|c| c == body.chars().next().unwrap()) {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn has_repeated_single_char_body(secret: &str) -> bool {

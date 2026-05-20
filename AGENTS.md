@@ -26,7 +26,7 @@
 - `type` 必須是小寫名詞；優先使用 `feat`、`fix`、`docs`、`test`、`refactor`、`build`、`ci`、`chore`。
 - `feat` 表示新增功能，對應 SemVer minor；`fix` 表示修正 bug，對應 SemVer patch。
 - `scope` 可選，使用小寫短名詞，例如 `docs`、`scanner`、`npm`、`ci`。
-- `description` 必填，使用祈使句、現在式、英文撰寫，不以句號結尾。
+- `description` 必填，使用繁體中文（zh-tw）撰寫，不以句號結尾。
 - 重大破壞性變更必須在 type/scope 後加 `!`，或在 footer 使用 `BREAKING CHANGE: <description>`；這類 commit 對應 SemVer major。
 - Body 可選，需與 header 空一行，用來說明動機、背景與行為差異，不重述 diff。
 - Footer 可選，需與 body 空一行；issue 連結使用 `Refs: #123` 或 `Closes: #123`。
@@ -37,9 +37,9 @@
 範例：
 
 ```text
-docs(readme): add localized documentation links
+docs(readme): 新增本地化文件連結
 
-feat(scanner)!: change default risk threshold
+feat(scanner)!: 變更預設風險閾值
 
-BREAKING CHANGE: scans now fail CI when findings are at or above the threshold
+BREAKING CHANGE: 當發現項目達到或高於閾值時，掃描現在會導致 CI 失敗
 ```

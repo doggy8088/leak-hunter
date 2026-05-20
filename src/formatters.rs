@@ -73,8 +73,9 @@ fn text_report(report: &Report<'_>) -> String {
 
     for finding in report.findings {
         out.push_str(&format!(
-            "[{}] {} ({})\n  Location: {}:{}:{}\n  Secret: {}\n  Hash: {}\n  Snippet: {}\n\n",
+            "[{} ({})] {} ({})\n  Location: {}:{}:{}\n  Secret: {}\n  Hash: {}\n  Snippet: {}\n\n",
             risk_label(finding.risk_score),
+            finding.risk_score,
             finding.title,
             finding.finding_type,
             finding.file_path,
