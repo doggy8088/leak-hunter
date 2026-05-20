@@ -126,6 +126,7 @@ fn text_and_markdown_formats_scan_local_fixtures() {
     let stdout = String::from_utf8_lossy(&text.stdout);
     assert!(stdout.starts_with(" _                _"));
     assert!(stdout.contains("Leak Hunter Report\n=================="));
+    assert!(stdout.contains("\n1. ["));
 
     let markdown = Command::new(env!("CARGO_BIN_EXE_leak-hunter"))
         .args(["--format", "markdown"])

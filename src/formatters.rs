@@ -71,9 +71,10 @@ fn text_report(report: &Report<'_>) -> String {
         return out;
     }
 
-    for finding in report.findings {
+    for (index, finding) in report.findings.iter().enumerate() {
         out.push_str(&format!(
-            "[{} ({})] {} ({})\n  Location: {}:{}:{}\n  Secret: {}\n  Hash: {}\n  Snippet: {}\n\n",
+            "{}. [{} ({})] {} ({})\n  Location: {}:{}:{}\n  Secret: {}\n  Hash: {}\n  Snippet: {}\n\n",
+            index + 1,
             risk_label(finding.risk_score),
             finding.risk_score,
             finding.title,
