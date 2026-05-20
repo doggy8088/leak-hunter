@@ -48,15 +48,15 @@ test('finds binaries nested in cargo-dist archive directories', () => {
 });
 
 test('builds prepublish release asset checks for every npm target', () => {
-  assert.deepEqual(prepublishCheck.expectedReleaseUrls('0.3.0'), [
-    'https://github.com/doggy8088/leak-hunter/releases/download/v0.3.0/leak-hunter-aarch64-apple-darwin.tar.xz',
-    'https://github.com/doggy8088/leak-hunter/releases/download/v0.3.0/leak-hunter-aarch64-apple-darwin.tar.xz.sha256',
-    'https://github.com/doggy8088/leak-hunter/releases/download/v0.3.0/leak-hunter-x86_64-apple-darwin.tar.xz',
-    'https://github.com/doggy8088/leak-hunter/releases/download/v0.3.0/leak-hunter-x86_64-apple-darwin.tar.xz.sha256',
-    'https://github.com/doggy8088/leak-hunter/releases/download/v0.3.0/leak-hunter-x86_64-unknown-linux-gnu.tar.xz',
-    'https://github.com/doggy8088/leak-hunter/releases/download/v0.3.0/leak-hunter-x86_64-unknown-linux-gnu.tar.xz.sha256',
-    'https://github.com/doggy8088/leak-hunter/releases/download/v0.3.0/leak-hunter-x86_64-pc-windows-msvc.zip',
-    'https://github.com/doggy8088/leak-hunter/releases/download/v0.3.0/leak-hunter-x86_64-pc-windows-msvc.zip.sha256',
+  assert.deepEqual(prepublishCheck.expectedReleaseUrls('0.4.0'), [
+    'https://github.com/doggy8088/leak-hunter/releases/download/v0.4.0/leak-hunter-aarch64-apple-darwin.tar.xz',
+    'https://github.com/doggy8088/leak-hunter/releases/download/v0.4.0/leak-hunter-aarch64-apple-darwin.tar.xz.sha256',
+    'https://github.com/doggy8088/leak-hunter/releases/download/v0.4.0/leak-hunter-x86_64-apple-darwin.tar.xz',
+    'https://github.com/doggy8088/leak-hunter/releases/download/v0.4.0/leak-hunter-x86_64-apple-darwin.tar.xz.sha256',
+    'https://github.com/doggy8088/leak-hunter/releases/download/v0.4.0/leak-hunter-x86_64-unknown-linux-gnu.tar.xz',
+    'https://github.com/doggy8088/leak-hunter/releases/download/v0.4.0/leak-hunter-x86_64-unknown-linux-gnu.tar.xz.sha256',
+    'https://github.com/doggy8088/leak-hunter/releases/download/v0.4.0/leak-hunter-x86_64-pc-windows-msvc.zip',
+    'https://github.com/doggy8088/leak-hunter/releases/download/v0.4.0/leak-hunter-x86_64-pc-windows-msvc.zip.sha256',
   ]);
 });
 
@@ -66,7 +66,7 @@ test('prepublish release asset check reports unavailable assets', async () => {
   await assert.rejects(
     () =>
       prepublishCheck.verifyReleaseAssets({
-        version: '0.3.0',
+        version: '0.4.0',
         retries: 2,
         retryDelayMs: 1,
         check: async (url) => {

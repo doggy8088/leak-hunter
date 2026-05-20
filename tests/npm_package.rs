@@ -18,9 +18,10 @@ fn npm_package_metadata_matches_cargo_and_exposes_expected_bins() {
     assert!(package.contains(
         "\"prepublishOnly\": \"npm test && npm pack --dry-run && node npm/prepublish-check.cjs\""
     ));
+    assert!(package.contains("\"CHANGELOG.md\""));
     assert!(package.contains("\"npm/prepublish-check.cjs\""));
-    assert!(package.contains("\"version\": \"0.3.0\""));
-    assert!(cargo.contains("version = \"0.3.0\""));
+    assert!(package.contains("\"version\": \"0.4.0\""));
+    assert!(cargo.contains("version = \"0.4.0\""));
 }
 
 #[test]
