@@ -34,6 +34,7 @@ lto = "thin"
 cargo-dist-version = "0.30.0"
 ci = "github"
 installers = ["shell", "powershell", "npm"]
+allow-dirty = ["ci"]
 targets = [
   "aarch64-apple-darwin",
   "x86_64-apple-darwin",
