@@ -277,14 +277,19 @@ jobs:
       - name: Create GitHub Release
         env:
           PRERELEASE_FLAG: "${{ fromJson(steps.host.outputs.manifest).announcement_is_prerelease && '--prerelease' || '' }}"
-          ANNOUNCEMENT_TITLE: "${{ fromJson(steps.host.outputs.manifest).announcement_title }}"
           ANNOUNCEMENT_BODY: "${{ fromJson(steps.host.outputs.manifest).announcement_github_body }}"
           RELEASE_COMMIT: "${{ github.sha }}"
         run: |
           # Write and read notes from a file to avoid quoting breaking things
           echo "$ANNOUNCEMENT_BODY" > $RUNNER_TEMP/notes.txt
 
-          gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+          RELEASE_TAG="${{ needs.plan.outputs.tag }}"
+          RELEASE_TITLE="$RELEASE_TAG"
+          if [[ "$RELEASE_TITLE" != v* && "$RELEASE_TITLE" != V* ]]; then
+            RELEASE_TITLE="v$RELEASE_TITLE"
+          fi
+
+          gh release create "$RELEASE_TAG" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$RELEASE_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
 
   announce:
     needs:
