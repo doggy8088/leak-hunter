@@ -68,6 +68,182 @@ fn detects_major_ai_provider_api_keys() {
 }
 
 #[test]
+fn detects_common_developer_and_saas_tokens() {
+    let dir = tempfile::tempdir().unwrap();
+    let gitlab = ["glpat-", "AbCdEfGhIjKlMnOpQrStUvWxYz1234"].concat();
+    let npm = ["npm_", "AbCdEfGhIjKlMnOpQrStUvWxYz1234567890"].concat();
+    let pypi = [
+        "pypi-",
+        "AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcdefghijklmno",
+    ]
+    .concat();
+    let digitalocean = ["dop_v1_", "AbCdEfGhIjKlMnOpQrStUvWxYz1234567890ABCD"].concat();
+    let vault = ["hvs.", "AbCdEfGhIjKlMnOpQrStUvWxYz123456"].concat();
+    let doppler = ["dp.pt.", "AbCdEfGhIjKlMnOpQrStUvWxYz123456"].concat();
+    let shopify = ["shpat_", "AbCdEfGhIjKlMnOpQrStUvWxYz123456"].concat();
+    let square_access = ["sq0atp-", "AbCdEfGhIjKlMnOpQrStUvWxYz123456"].concat();
+    let square_secret = ["sq0csp-", "AbCdEfGhIjKlMnOpQrStUvWxYz1234567890"].concat();
+    let airtable = [
+        "patAbCdEfGhIjKlMn.",
+        "AbCdEfGhIjKlMnOpQrStUvWxYz1234567890ABCD",
+    ]
+    .concat();
+    let braintree = [
+        "access_token$production$merchant123$",
+        "AbCdEfGhIjKlMnOpQrStUvWxYz123456",
+    ]
+    .concat();
+    let mailchimp = ["0123456789abcdef0123456789abcdef", "-us20"].concat();
+
+    std::fs::write(
+        dir.path().join("tokens.env"),
+        format!(
+            "\
+GITLAB_TOKEN={gitlab}
+NPM_TOKEN={npm}
+PYPI_API_TOKEN={pypi}
+DIGITALOCEAN_TOKEN={digitalocean}
+VAULT_TOKEN_NEW={vault}
+DOPPLER_TOKEN={doppler}
+SHOPIFY_TOKEN={shopify}
+SQUARE_ACCESS_TOKEN={square_access}
+SQUARE_APPLICATION_SECRET={square_secret}
+AIRTABLE_TOKEN={airtable}
+BRAINTREE_TOKEN={braintree}
+MAILCHIMP_API_KEY={mailchimp}
+"
+        ),
+    )
+    .unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    let finding_types: Vec<&str> = result
+        .findings
+        .iter()
+        .map(|finding| finding.finding_type.as_str())
+        .collect();
+
+    for expected in [
+        "gitlab_token",
+        "npm_token",
+        "pypi_api_token",
+        "digitalocean_token",
+        "hashicorp_vault_token",
+        "doppler_token",
+        "shopify_access_token",
+        "square_access_token",
+        "square_application_secret",
+        "airtable_pat",
+        "braintree_access_token",
+        "mailchimp_api_key",
+    ] {
+        assert!(finding_types.contains(&expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn detects_common_webhook_and_context_gated_tokens() {
+    let dir = tempfile::tempdir().unwrap();
+    let slack_webhook = [
+        "https://hooks.slack.com/services/T1234567890/B1234567890/",
+        "AbCdEfGhIjKlMnOpQrStUvWxYz1234",
+    ]
+    .concat();
+    let discord_webhook = [
+        "https://discord.com/api/webhooks/123456789012345678/",
+        "AbCdEfGhIjKlMnOpQrStUvWxYz1234567890abcdefghijklmnoPQRSTUVWXYZ",
+    ]
+    .concat();
+    let telegram = ["123456789:", "AbCdEfGhIjKlMnOpQrStUvWxYz123456789"].concat();
+    let cloudflare = ["v1.0-", "AbCdEfGhIjKlMnOpQrStUvWxYz1234567890ABCD"].concat();
+    let vault_legacy = ["s.", "AbCdEfGhIjKlMnOpQrStUvWxYz"].concat();
+    let paypal = ["AbCdEfGhIjKlMnOpQrStUvWxYz123456"].concat();
+    let notion = ["secret_", "AbCdEfGhIjKlMnOpQrStUvWxYz"].concat();
+    let netlify = ["AbCdEfGhIjKlMnOpQrStUvWxYz1234567890ABCD"].concat();
+    let teams_webhook = [
+        "https://example.webhook.office.com/webhookb2/",
+        "01234567-89ab-cdef-0123-456789abcdef@01234567-89ab-cdef-0123-456789abcdef/",
+        "IncomingWebhook/AbCdEfGhIjKlMnOpQrStUvWxYz/",
+        "01234567-89ab-cdef-0123-456789abcdef",
+    ]
+    .concat();
+    let teams_logic = [
+        "https://prod-00.eastus.logic.azure.com/workflows/abc/triggers/manual/paths/invoke?",
+        "api-version=2016-10-01&sig=AbCdEfGhIjKlMnOpQrStUvWxYz123456",
+    ]
+    .concat();
+
+    std::fs::write(
+        dir.path().join("webhooks.env"),
+        format!(
+            "\
+SLACK_WEBHOOK_URL={slack_webhook}
+DISCORD_WEBHOOK_URL={discord_webhook}
+TELEGRAM_BOT_TOKEN={telegram}
+CLOUDFLARE_API_TOKEN={cloudflare}
+VAULT_TOKEN={vault_legacy}
+SNYK_TOKEN=123e4567-e89b-12d3-a456-426614174000
+SONAR_TOKEN=0123456789abcdef0123456789abcdef01234567
+PAYPAL_CLIENT_SECRET={paypal}
+NOTION_API_TOKEN={notion}
+MAILGUN_API_KEY=key-0123456789abcdef0123456789abcdef
+POSTMARK_SERVER_API_TOKEN=123e4567-e89b-12d3-a456-426614174000
+NETLIFY_AUTH_TOKEN={netlify}
+TEAMS_WEBHOOK_URL={teams_webhook}
+MICROSOFT_TEAMS_WEBHOOK_URL={teams_logic}
+"
+        ),
+    )
+    .unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    let finding_types: Vec<&str> = result
+        .findings
+        .iter()
+        .map(|finding| finding.finding_type.as_str())
+        .collect();
+
+    for expected in [
+        "slack_webhook_url",
+        "discord_webhook_url",
+        "telegram_bot_token",
+        "cloudflare_api_token_context",
+        "vault_legacy_token_context",
+        "snyk_token_context",
+        "sonar_token_context",
+        "paypal_client_secret_context",
+        "notion_token_context",
+        "mailgun_api_key_context",
+        "postmark_api_token_context",
+        "netlify_auth_token_context",
+        "microsoft_teams_webhook_url",
+        "teams_logic_webhook_context",
+    ] {
+        assert!(finding_types.contains(&expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn context_gated_tokens_do_not_match_bare_common_identifiers() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("ids.txt"),
+        [
+            "uuid = 123e4567-e89b-12d3-a456-426614174000\n",
+            "sha1 = 0123456789abcdef0123456789abcdef01234567\n",
+            "notion_like = secret_AbCdEfGhIjKlMnOpQrStUvWxYz\n",
+            "mailgun_like = key-0123456789abcdef0123456789abcdef\n",
+            "vault_note = s.AbCdEfGhIjKlMnOpQrStUvWxYz\n",
+        ]
+        .concat(),
+    )
+    .unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    assert_eq!(result.summary.findings, 0);
+}
+
+#[test]
 fn suppresses_prefixed_keys_with_repeated_placeholder_body() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(

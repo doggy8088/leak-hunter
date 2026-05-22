@@ -99,7 +99,8 @@ leak-hunter . --json \
 
 The current rebuilt rules cover:
 
-- OpenAI, Google API keys, GitHub tokens, Stripe, Slack, Sentry, and Docker Hub PATs
+- OpenAI, Google API keys, GitHub/GitLab tokens, Stripe, Slack tokens/webhooks, Sentry, and Docker Hub PATs
+- npm, PyPI, DigitalOcean, HashiCorp Vault, Doppler, Shopify, Square, Airtable, Braintree, Mailchimp, Cloudflare, Snyk, Sonar, PayPal, Notion, Mailgun, Postmark, Netlify, and Microsoft Teams token formats
 - AWS access key / secret key pairing
 - Azure Storage connection strings, AccountKeys, and SAS URIs
 - Popular framework app secrets such as Django, Flask, Rails, Laravel, NextAuth, Nuxt, Spring, and ASP.NET

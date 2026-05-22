@@ -23,15 +23,33 @@
 | :--- | :--- | :---: | :---: | :--- |
 | `private_key_pem` | PEM Private Key | **100** | Critical | PEM 格式私鑰首尾特徵，極高敏感性 |
 | `github_token` | GitHub Token | **95** | Critical | `ghp_`, `gho_` 等前綴，或 `github_pat_` |
+| `gitlab_token` | GitLab Token | **95** | Critical | `glpat-` 開頭之個人存取權杖 |
 | `stripe_key` | Stripe Secret/Restricted Key | **95** | Critical | `sk_live_`, `rk_live_` 等前綴 |
 | `aws_secret_access_key` | AWS Secret Access Key | **95** | Critical | 需搭配 `aws_secret_access_key` 等變數名偵測 |
 | `azure_storage_connection_string`| Azure Storage Connection String| **95** | Critical | 包含 `AccountName` 與 `AccountKey` 的完整連線字串 |
 | `gcp_service_account_json` | GCP Service Account JSON | **95** | Critical | GCP 服務帳戶私鑰金鑰 JSON 結構 |
+| `hashicorp_vault_token` | HashiCorp Vault Token | **95** | Critical | `hvs.`, `hvb.`, `hvr.` 開頭之 Vault Token |
+| `braintree_access_token` | Braintree Access Token | **95** | Critical | `access_token$production$...` 或 sandbox 形式 |
 | `openai_api_key` | OpenAI API Key | **90** | Critical | `sk-` 或 `sk-proj-` 開頭之 API 金鑰 |
 | `anthropic_api_key` | Anthropic API Key | **90** | Critical | `sk-ant-api` 開頭之 API 金鑰 |
 | `slack_token` | Slack Token | **90** | Critical | `xoxb-`, `xoxp-`, `xapp-` 等 Token |
+| `slack_webhook_url` | Slack Webhook URL | **90** | Critical | `https://hooks.slack.com/services/...` Webhook URL |
+| `discord_webhook_url` | Discord Webhook URL | **90** | Critical | Discord `/api/webhooks/...` URL |
 | `sendgrid_key` | SendGrid API Key | **90** | Critical | `SG.` 開頭之金鑰 |
 | `docker_pat` | Docker Hub PAT | **90** | Critical | `dckr_pat_` 開頭之個人存取權杖 |
+| `npm_token` | npm Access Token | **90** | Critical | `npm_` 開頭之 access token |
+| `pypi_api_token` | PyPI API Token | **90** | Critical | `pypi-` 開頭之 API Token |
+| `digitalocean_token` | DigitalOcean Token | **90** | Critical | `dop_v1_` 等 DigitalOcean Token |
+| `doppler_token` | Doppler Token | **90** | Critical | `dp.pt.`, `dp.st.`, `dp.ct.` 開頭之 Token |
+| `shopify_access_token` | Shopify Access Token | **90** | Critical | `shpat_`, `shppa_` 等 Shopify Token |
+| `square_access_token` | Square Access Token | **90** | Critical | `sq0atp-` / `sq0atb-` 開頭之 Square Token |
+| `square_application_secret` | Square Application Secret | **90** | Critical | `sq0csp-` 開頭之 Square application secret |
+| `airtable_pat` | Airtable Personal Access Token | **90** | Critical | Airtable `pat...` 個人存取權杖 |
+| `mailchimp_api_key` | Mailchimp API Key | **90** | Critical | 32 碼 hex 加 datacenter suffix，例如 `-us20` |
+| `cloudflare_api_token_context` | Cloudflare API Token | **90** | Critical | 需搭配 `CLOUDFLARE_API_TOKEN` / `CF_API_TOKEN` 變數偵測 |
+| `vault_legacy_token_context` | Vault Legacy Token | **90** | Critical | 需搭配 `VAULT_TOKEN` 變數偵測 legacy `s.` Token |
+| `mailgun_api_key_context` | Mailgun API Key | **90** | Critical | 需搭配 `MAILGUN_API_KEY` 變數偵測 |
+| `microsoft_teams_webhook_url` | Microsoft Teams Webhook URL | **90** | Critical | `webhook.office.com` IncomingWebhook URL |
 | `azure_storage_key_generic` | Azure Storage AccountKey | **90** | Critical | 獨立的 Azure 帳戶金鑰特徵 |
 | `azure_sas_uri` | Azure SAS URI | **90** | Critical | 包含 SAS 簽章的金鑰網址 |
 | `xai_api_key` | xAI API Key | **85** | High | `xai-` 開頭之 API 金鑰 |
@@ -41,7 +59,13 @@
 | `google_api_key` | Google API Key | **85** | High | `AIza` 開頭之 Google API 密鑰 |
 | `sentry_auth_token` | Sentry Auth Token | **85** | High | `sntrys_` 開頭之 Sentry 授權權杖 |
 | `aws_access_key_id` | AWS Access Key ID | **85** | High | `AKIA` 或 `ASIA` 開頭之 16 碼識別碼 |
+| `telegram_bot_token` | Telegram Bot Token | **85** | High | Telegram Bot token 數字 ID 加冒號與 token body |
+| `paypal_client_secret_context` | PayPal Client Secret | **85** | High | 需搭配 `PAYPAL_SECRET` / `PAYPAL_CLIENT_SECRET` 變數偵測 |
+| `notion_token_context` | Notion API Token | **85** | High | 需搭配 `NOTION_*` 變數偵測 `secret_` / `ntn_` Token |
+| `postmark_api_token_context` | Postmark API Token | **85** | High | 需搭配 `POSTMARK_*TOKEN` 變數偵測 UUID token |
+| `teams_logic_webhook_context` | Microsoft Teams Logic App Webhook URL | **85** | High | 需搭配 Teams 變數名偵測 `logic.azure.com` 且含 `sig=` 的 URL |
 | `heroku_api_key_context` | Heroku API Key | **85** | High | 需搭配 `HEROKU_API_KEY` 變數偵測 |
+| `datadog_key_context` | Datadog API or App Key | **80** | High | 需搭配 `DD_API_KEY`, `DD_APP_KEY` 或 `DD_APPLICATION_KEY` 變數偵測 |
 | `taiwan_national_id` | 中華民國國民身分證統一編號 | **85** | High | **台灣個資**：首碼英文字母 + 9 碼數字，**含 checksum 校驗** |
 | `taiwan_arc_ui` | 中華民國居留證/統一證號 | **85** | High | **台灣個資**：新舊版統一證號，**含 checksum 校驗** |
 | `huggingface_token` | Hugging Face Token | **80** | High | `hf_` 開頭之 Token |
@@ -52,11 +76,14 @@
 | `mongodb_uri` | MongoDB URI | **80** | High | `mongodb://` 或 `mongodb+srv://` 格式 |
 | `redis_uri` | Redis URI | **80** | High | `redis://` 或 `rediss://` 格式 |
 | `google_oauth_client_secret` | Google OAuth Client Secret | **80** | High | GCP OAuth 客戶端密鑰特徵 |
+| `snyk_token_context` | Snyk API Token | **80** | High | 需搭配 `SNYK_TOKEN` / `SNYK_API_TOKEN` 變數偵測 UUID token |
+| `netlify_auth_token_context` | Netlify Auth Token | **80** | High | 需搭配 `NETLIFY_AUTH_TOKEN` 變數偵測 |
 | `jwt` | JWT (JSON Web Token) | **75** | High | 以 `eyJ` 開頭的 JWT 連續字串 |
+| `sonar_token_context` | Sonar Token | **75** | High | 需搭配 `SONAR_TOKEN` 變數偵測 40 碼 hex token |
 | `twilio_account_sid` | Twilio Account SID | **70** | Medium | `AC` 開頭的 32 碼識別碼 |
 | `twilio_api_key_sid` | Twilio API Key SID | **70** | Medium | `SK` 開頭的 32 碼識別碼 |
-| `taiwan_citizen_certificate` | 台灣自然人憑證號碼 | **60** | Medium | **台灣個資**：2 碼大寫英文字母 + 14 碼數字 |
 | `taiwan_mobile` | 台灣手機號碼 | **50** | Medium | **台灣個資**：`09` 或 `+8869` 開頭共 10 碼（支援 `-` 或空格） |
+| `taiwan_citizen_certificate` | 台灣自然人憑證號碼 | **30** | Low | **台灣個資**：2 碼大寫英文字母 + 14 碼數字；搭配自然人憑證上下文時會提高風險 |
 | `taiwan_einvoice_barcode` | 台灣電子發票手機條碼載具 | **20** | Low | **台灣個資**：`/` 開頭共 8 碼（符合載具字元特徵），本身不具機密性，風險極低 |
 | `certificate_pem` | PEM Certificate | **25** | Low | PEM 格式憑證公開部分 |
 | `ssh_public_key` | SSH Public Key | **20** | Low | SSH 公開金鑰 |
