@@ -82,6 +82,7 @@
 | `sonar_token_context` | Sonar Token | **75** | High | 需搭配 `SONAR_TOKEN` 變數偵測 40 碼 hex token |
 | `twilio_account_sid` | Twilio Account SID | **70** | Medium | `AC` 開頭的 32 碼識別碼 |
 | `twilio_api_key_sid` | Twilio API Key SID | **70** | Medium | `SK` 開頭的 32 碼識別碼 |
+| `generic_password_context` | Generic Password Field | **65** | Medium | 完整密碼標籤後接同一行高隨機性 ASCII 候選值 |
 | `taiwan_mobile` | 台灣手機號碼 | **50** | Medium | **台灣個資**：`09` 或 `+8869` 開頭共 10 碼（支援 `-` 或空格） |
 | `taiwan_citizen_certificate` | 台灣自然人憑證號碼 | **30** | Low | **台灣個資**：2 碼大寫英文字母 + 14 碼數字；搭配自然人憑證上下文時會提高風險 |
 | `taiwan_einvoice_barcode` | 台灣電子發票手機條碼載具 | **20** | Low | **台灣個資**：`/` 開頭共 8 碼（符合載具字元特徵），本身不具機密性，風險極低 |
@@ -109,6 +110,11 @@
     *   若上下文 150 字元內包含 `public key` 或 `certificate` 關鍵字，分數 **`-10`**。
 
 ### C. 特定規則專屬調整
+*   **一般密碼欄位規則**：
+    *   `generic_password_context` 只接受完整的 `password`、`passwd` 或 `pwd` 標籤，並要求候選值位於同一行。
+    *   候選值長度須為 8 至 128 個 ASCII 字元、至少包含兩種字元類別、6 個不同字元，且香農熵大於等於 `3.0`。
+    *   URL、程式碼 member access、函式呼叫與明顯 identifier 不會產生 finding。
+    *   基礎分數為 `65`；即使位於 `README` 或 `docs/` 路徑並扣除 25 分，仍為 `40` 分，可在預設門檻顯示。
 *   **Google API Key 於 Firebase 的扣分**：
     *   當規則為 `google_api_key`，且檔案路徑包含 `firebase`、`google-services.json`、`googleservice-info.plist` 或內容含 `firebaseconfig` 時，因通常為公開設定，分數 **`-55`**。
 *   **AWS Access Key ID 存在 Secret Key 的加成**：
@@ -134,6 +140,14 @@
 2.  **一般系統佔位金鑰 (`is_likely_placeholder`)**：
     *   符合常見金鑰佔位模式（如 `sk-xxxxxxxxxxxxxxxxxxxxxxxx`、`example`、`dummy`、`placeholder`、`your_api_key_here` 等）。
     *   具有大於等於 16 碼連續相同字元的主體金鑰。
-3.  **說明文件範例**：
+3.  **一般密碼欄位佔位值**：
+    *   弱密碼名稱、環境變數引用與模板引用會保留為 `30` 分 Low finding，不會出現在預設 `--min-risk 40` 報告中。
+4.  **說明文件範例**：
     *   若檔案路徑中含有 `readme`、`docs/`、`documentation` 或 `guide`。
     *   且檢出的密鑰值中包含 `example`、`sample` 或 `dummy`。
+
+---
+
+## 5. 一般密碼欄位遮罩
+
+`generic_password_context` 在預設 redaction 模式下固定輸出 `[REDACTED]`，不保留候選值的前後片段。報告仍會保留不可逆的短雜湊與 entropy，供重複 finding 比對及人工分流。

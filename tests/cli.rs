@@ -136,3 +136,33 @@ fn text_and_markdown_formats_scan_local_fixtures() {
     assert_eq!(markdown.status.code(), Some(1));
     assert!(String::from_utf8_lossy(&markdown.stdout).starts_with("# Leak Hunter Report"));
 }
+
+#[test]
+fn generic_password_json_scan_reports_redacted_finding_and_failure_status() {
+    let dir = tempfile::tempdir().unwrap();
+    let label = ["Pass", "word"].concat();
+    let value = ["aB3d", "E5fG", "7hJ9"].concat();
+    std::fs::write(
+        dir.path().join("credentials.md"),
+        format!("> {label} : {value}\n"),
+    )
+    .unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_leak-hunter"))
+        .arg("--json")
+        .arg(dir.path())
+        .output()
+        .expect("run generic password scan");
+
+    assert_eq!(output.status.code(), Some(1));
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let finding = json["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|finding| finding["type"] == "generic_password_context")
+        .expect("expected generic password finding");
+    assert!(finding["riskScore"].as_u64().unwrap() >= 40);
+    assert_eq!(finding["secret"], "[REDACTED]");
+    assert!(!String::from_utf8_lossy(&output.stdout).contains(&value));
+}

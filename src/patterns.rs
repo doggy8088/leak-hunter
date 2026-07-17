@@ -527,6 +527,13 @@ pub static SECRET_PATTERNS: Lazy<Vec<SecretPattern>> = Lazy::new(|| {
             r#"(?i)(?:\b(?:DJANGO_SECRET_KEY|FLASK_SECRET_KEY|SECRET_KEY|SECRET_KEY_BASE|APP_KEY|JWT_SECRET|SESSION_SECRET|AUTH_SECRET|NEXTAUTH_SECRET|NUXT_SESSION_PASSWORD|RAILS_MASTER_KEY|TOKEN_KEY|SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_[A-Z0-9_]+_CLIENT_SECRET)\b|secret_key_base)\s*[:=]\s*[\"']?(?P<secret>(?:base64:)?[A-Za-z0-9][A-Za-z0-9/_+=.-]{15,127})[\"']?"#,
             80,
         ),
+        SecretPattern::new_with_validator(
+            "generic_password_context",
+            "Generic Password Field",
+            r#"(?im)^[ \t]*(?:(?:[-*+>]|[0-9]+[.)])[ \t]+)*(?:\*\*|__)?["']?(?:password|passwd|pwd)["']?[ \t]*(?:\*\*|__)?[ \t]*[:=][ \t]*(?:\*\*|__)?[ \t]*["'`]?(?P<secret>[^\s"'`]{8,128}?)(?:["'`][ \t]*(?:[,;}][ \t]*)?|[ \t]*(?:[,;][ \t]*)?)\r?$"#,
+            65,
+            is_valid_generic_password_candidate,
+        ),
         SecretPattern::new(
             "twilio_account_sid",
             "Twilio Account SID",
@@ -690,6 +697,102 @@ pub fn is_weak_password_val(val: &str) -> bool {
         || val.starts_with('<') && val.ends_with('>')
         || val.starts_with('[') && val.ends_with(']')
         || val.starts_with('{') && val.ends_with('}')
+}
+
+pub(crate) fn is_generic_password_placeholder(val: &str) -> bool {
+    let val = val.trim().trim_matches(['"', '\'', '`']);
+    is_weak_password_val(val)
+        || val.starts_with("${") && val.ends_with('}')
+        || val.starts_with("{{") && val.ends_with("}}")
+        || val.starts_with('%') && val.ends_with('%')
+}
+
+pub(crate) fn shannon_entropy(value: &str) -> f64 {
+    if value.is_empty() {
+        return 0.0;
+    }
+    let mut counts = std::collections::HashMap::new();
+    for byte in value.bytes() {
+        *counts.entry(byte).or_insert(0usize) += 1;
+    }
+    let len = value.len() as f64;
+    counts.values().fold(0.0, |acc, count| {
+        let probability = *count as f64 / len;
+        acc - probability * probability.log2()
+    })
+}
+
+fn is_valid_generic_password_candidate(secret: &str) -> bool {
+    if !(8..=128).contains(&secret.len())
+        || !secret.is_ascii()
+        || secret
+            .bytes()
+            .any(|byte| byte.is_ascii_control() || byte.is_ascii_whitespace())
+    {
+        return false;
+    }
+
+    if is_generic_password_url(secret) {
+        return false;
+    }
+    if is_generic_password_placeholder(secret) {
+        return true;
+    }
+    if is_generic_password_code_reference(secret) {
+        return false;
+    }
+
+    let mut classes = [false; 4];
+    let mut distinct = [false; 128];
+    for byte in secret.bytes() {
+        let class = if byte.is_ascii_lowercase() {
+            0
+        } else if byte.is_ascii_uppercase() {
+            1
+        } else if byte.is_ascii_digit() {
+            2
+        } else {
+            3
+        };
+        classes[class] = true;
+        distinct[usize::from(byte)] = true;
+    }
+
+    classes.into_iter().filter(|present| *present).count() >= 2
+        && distinct.into_iter().filter(|present| *present).count() >= 6
+        && shannon_entropy(secret) >= 3.0
+}
+
+fn is_generic_password_code_reference(secret: &str) -> bool {
+    let lower = secret.to_ascii_lowercase();
+    if is_ascii_identifier(secret) && (lower.contains("password") || lower.contains("passwd")) {
+        return true;
+    }
+
+    if let Some(call_target) = secret.strip_suffix("()") {
+        return is_ascii_identifier(call_target);
+    }
+
+    let mut segments = secret.split('.');
+    let Some(first) = segments.next() else {
+        return false;
+    };
+    let mut remaining = segments.peekable();
+    remaining.peek().is_some() && is_ascii_identifier(first) && remaining.all(is_ascii_identifier)
+}
+
+fn is_generic_password_url(secret: &str) -> bool {
+    let lower = secret.to_ascii_lowercase();
+    lower.starts_with("http://") || lower.starts_with("https://") || lower.starts_with("file://")
+}
+
+fn is_ascii_identifier(value: &str) -> bool {
+    let mut bytes = value.bytes();
+    let Some(first) = bytes.next() else {
+        return false;
+    };
+    (first.is_ascii_alphabetic() || first == b'_')
+        && bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
 }
 
 pub fn contains_placeholder_password(conn_str: &str) -> bool {

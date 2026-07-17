@@ -1,4 +1,6 @@
-use crate::patterns::{is_likely_placeholder, SECRET_PATTERNS};
+use crate::patterns::{
+    is_generic_password_placeholder, is_likely_placeholder, shannon_entropy, SECRET_PATTERNS,
+};
 use anyhow::{Context, Result};
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
@@ -277,7 +279,7 @@ fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
             if should_suppress(&rel, &text, secret) {
                 continue;
             }
-            let secret_entropy = entropy(secret);
+            let secret_entropy = shannon_entropy(secret);
             let risk = risk_score(
                 pattern.id,
                 pattern.base_risk,
@@ -362,7 +364,8 @@ fn risk_score(
     }
 
     // Placeholders and documentation examples are rated as Low risk (30)
-    let is_placeholder = is_likely_placeholder(secret);
+    let is_placeholder = is_likely_placeholder(secret)
+        || pattern_id == "generic_password_context" && is_generic_password_placeholder(secret);
     let is_doc_example = (lower_path.contains("readme")
         || lower_path.contains("docs/")
         || lower_path.contains("documentation")
@@ -387,7 +390,7 @@ fn risk_score(
     if lower_path.contains("readme") || lower_path.contains("docs/") {
         score -= 25;
     }
-    if entropy(secret) < 3.0 && secret.len() < 24 {
+    if shannon_entropy(secret) < 3.0 && secret.len() < 24 {
         score -= 20;
     }
     if is_database_uri_pattern(pattern_id) && has_local_uri_host(secret) {
@@ -613,21 +616,6 @@ fn is_strict_bare_country_taiwan_mobile(bytes: &[u8]) -> bool {
     bytes.len() == 12 && bytes.starts_with(b"8869") && bytes.iter().all(u8::is_ascii_digit)
 }
 
-fn entropy(value: &str) -> f64 {
-    if value.is_empty() {
-        return 0.0;
-    }
-    let mut counts = std::collections::HashMap::new();
-    for b in value.bytes() {
-        *counts.entry(b).or_insert(0usize) += 1;
-    }
-    let len = value.len() as f64;
-    counts.values().fold(0.0, |acc, count| {
-        let p = *count as f64 / len;
-        acc - p * p.log2()
-    })
-}
-
 fn line_column(text: &str, byte_offset: usize) -> (usize, usize) {
     let prefix = &text[..byte_offset.min(text.len())];
     let line = prefix.bytes().filter(|b| *b == b'\n').count() + 1;
@@ -684,7 +672,9 @@ pub fn redact_secret(secret: &str) -> String {
 }
 
 pub fn redact_secret_for_pattern(pattern_id: &str, secret: &str) -> String {
-    if pattern_id.starts_with("taiwan_") {
+    if pattern_id == "generic_password_context" {
+        "[REDACTED]".to_string()
+    } else if pattern_id.starts_with("taiwan_") {
         if secret.len() <= 4 {
             return "[REDACTED]".to_string();
         }

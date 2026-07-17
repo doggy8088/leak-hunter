@@ -533,6 +533,162 @@ fn test_database_connection_string_filtering_and_placeholders() {
 }
 
 #[test]
+fn generic_password_detects_markdown_blockquote_values_with_default_risk() {
+    let dir = tempfile::tempdir().unwrap();
+    let label = ["Pass", "word"].concat();
+    let values = [
+        ["aB3d", "E5fG", "7hJ9"].concat(),
+        ["LmNo", "PqRs", "TuVw"].concat(),
+        ["ZxCv", "BnMm", "KjHg"].concat(),
+    ];
+    let contents = values
+        .iter()
+        .map(|value| format!("> {label} : {value}\n"))
+        .collect::<String>();
+    std::fs::write(dir.path().join("credentials.md"), contents).unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    let findings: Vec<_> = result
+        .findings
+        .iter()
+        .filter(|finding| finding.finding_type == "generic_password_context")
+        .collect();
+
+    assert_eq!(findings.len(), 3);
+    for (index, finding) in findings.iter().enumerate() {
+        assert_eq!(finding.risk_score, 65);
+        assert_eq!(finding.secret, "[REDACTED]");
+        assert_eq!(finding.line_number, index + 1);
+        assert!(finding.entropy >= 3.0);
+        assert!(finding.secret_hash.starts_with("sha256:"));
+        assert!(values.iter().all(|value| !finding.snippet.contains(value)));
+    }
+}
+
+#[test]
+fn generic_password_supports_common_labels_and_serialized_forms() {
+    let dir = tempfile::tempdir().unwrap();
+    let password = ["Pass", "word"].concat();
+    let upper_password = password.to_ascii_uppercase();
+    let values = [
+        ["Q1wE", "3rT5", "yU7i"].concat(),
+        ["AsDf", "GhJk", "LqWe"].concat(),
+        ["Z9xC", "8vB7", "nM6k"].concat(),
+        ["R2tY", "4uI6", "oP8a"].concat(),
+        ["HjKl", "QwEr", "TyUi"].concat(),
+        ["MyPass", "word", "123!"].concat(),
+    ];
+    let contents = [
+        format!("- **{password}:** '{}'\n", values[0]),
+        format!("{upper_password}={}\n", values[1]),
+        format!("passwd : `{}`\n", values[2]),
+        format!("PWD = '{}'\n", values[3]),
+        format!("\"{}\": \"{}\"\n", password.to_ascii_lowercase(), values[4]),
+        format!("{password}: {}\n", values[5]),
+    ]
+    .concat();
+    std::fs::write(dir.path().join("formats.txt"), contents).unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    let findings: Vec<_> = result
+        .findings
+        .iter()
+        .filter(|finding| finding.finding_type == "generic_password_context")
+        .collect();
+
+    assert_eq!(findings.len(), values.len());
+    assert!(findings.iter().all(|finding| finding.risk_score == 65));
+}
+
+#[test]
+fn generic_password_remains_visible_in_documentation_paths() {
+    let dir = tempfile::tempdir().unwrap();
+    let docs = dir.path().join("docs");
+    std::fs::create_dir_all(&docs).unwrap();
+    let label = ["Pass", "word"].concat();
+    let value = ["aB3d", "E5fG", "7hJ9"].concat();
+    std::fs::write(docs.join("credentials.md"), format!("> {label}: {value}\n")).unwrap();
+
+    let result = scan_path(dir.path(), &options()).unwrap();
+    let finding = result
+        .findings
+        .iter()
+        .find(|finding| finding.finding_type == "generic_password_context")
+        .expect("expected generic password finding in docs path");
+
+    assert_eq!(finding.risk_score, 40);
+}
+
+#[test]
+fn generic_password_scores_placeholders_below_the_default_threshold() {
+    let dir = tempfile::tempdir().unwrap();
+    let label = ["Pass", "word"].concat();
+    let placeholders = ["your-password", "${PASSWORD}", "{{PASSWORD}}", "%PASSWORD%"];
+    let contents = placeholders
+        .iter()
+        .map(|value| format!("{label}: {value}\n"))
+        .collect::<String>();
+    std::fs::write(dir.path().join("placeholders.txt"), contents).unwrap();
+
+    let default_result = scan_path(dir.path(), &options()).unwrap();
+    assert!(default_result
+        .findings
+        .iter()
+        .all(|finding| finding.finding_type != "generic_password_context"));
+
+    let mut low_risk_options = options();
+    low_risk_options.min_risk = 30;
+    let low_risk_result = scan_path(dir.path(), &low_risk_options).unwrap();
+    let findings: Vec<_> = low_risk_result
+        .findings
+        .iter()
+        .filter(|finding| finding.finding_type == "generic_password_context")
+        .collect();
+
+    assert_eq!(findings.len(), placeholders.len());
+    assert!(findings.iter().all(|finding| finding.risk_score == 30));
+}
+
+#[test]
+fn generic_password_rejects_code_references_and_non_random_values() {
+    let dir = tempfile::tempdir().unwrap();
+    let label = ["Pass", "word"].concat();
+    let overlong = "A1".repeat(65);
+    let contents = [
+        format!("{label}: form.password\n"),
+        format!("{label}: passwordHash\n"),
+        format!("{label}: getPassword()\n"),
+        format!("{label}: https://example.invalid/login\n"),
+        format!("{label}: reset your password now\n"),
+        format!("{label}: abcdefghijk\n"),
+        format!("{label}: A1A1A1A1A1A1\n"),
+        format!("{label}: 非ASCII候選值123\n"),
+        format!("{label}: {overlong}\n"),
+        format!("{label}:\n{}\n", ["aB3d", "E5fG", "7hJ9"].concat()),
+    ]
+    .concat();
+    std::fs::write(dir.path().join("false-positives.txt"), contents).unwrap();
+
+    let mut all_risks = options();
+    all_risks.min_risk = 0;
+    let result = scan_path(dir.path(), &all_risks).unwrap();
+
+    let unexpected: Vec<_> = result
+        .findings
+        .iter()
+        .filter(|finding| finding.finding_type == "generic_password_context")
+        .map(|finding| {
+            (
+                finding.finding_type.as_str(),
+                finding.line_number,
+                finding.risk_score,
+            )
+        })
+        .collect();
+    assert!(unexpected.is_empty(), "unexpected findings: {unexpected:?}");
+}
+
+#[test]
 fn azure_sas_uri_detects_real_token_and_filters_false_positives() {
     let dir = tempfile::tempdir().unwrap();
 
