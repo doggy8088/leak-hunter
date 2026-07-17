@@ -20,8 +20,9 @@ fn npm_package_metadata_matches_cargo_and_exposes_expected_bins() {
     ));
     assert!(package.contains("\"CHANGELOG.md\""));
     assert!(package.contains("\"npm/prepublish-check.cjs\""));
-    assert!(package.contains("\"version\": \"0.4.0\""));
-    assert!(cargo.contains("version = \"0.4.0\""));
+    let version = env!("CARGO_PKG_VERSION");
+    assert!(package.contains(&format!("\"version\": \"{version}\"")));
+    assert!(cargo.contains(&format!("version = \"{version}\"")));
 }
 
 #[test]

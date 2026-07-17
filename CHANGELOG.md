@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-07-18
+
+### Added
+
+- High-confidence and context-gated detectors for GitLab, npm, PyPI, DigitalOcean, HashiCorp Vault, Doppler, Shopify, Square, Airtable, Braintree, Mailchimp, Slack and Discord webhooks, Telegram bot tokens, Cloudflare, Snyk, Sonar, PayPal, Notion, Mailgun, Postmark, Netlify, and Microsoft Teams webhook formats.
+- Context-aware `generic_password_context` detection for random-looking values following complete `password`, `passwd`, or `pwd` labels in common text, Markdown, JSON, and YAML-style formats.
+- Candidate validation for generic password fields using length, ASCII, character-class diversity, distinct-character count, and Shannon entropy requirements, with false-positive filtering for URLs, source-code constructs, identifiers, multiline content, and low-randomness values.
+- A development Makefile covering formatting, linting, tests, builds, npm packaging, documentation builds, self-scans, parameterized scans, and local Cargo or npm installation.
+
+### Changed
+
+- Generic password findings use a base risk score of `65`, while placeholders, template references, and weak example values are retained as low-risk findings at `30`.
+- Generic password findings are always fully replaced with `[REDACTED]` in the default output instead of retaining candidate prefixes or suffixes.
+- Shannon entropy calculation is shared between pattern validation and scanner risk scoring.
+
+### Fixed
+
+- The npm CLI wrapper is now executable after checkout and packaging.
+- Bare identifiers and code-like expressions that resemble provider tokens or password assignments no longer produce generic password findings.
+
 ## [0.4.0] - 2026-05-21
 
 ### Added
