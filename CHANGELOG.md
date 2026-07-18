@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-07-19
+
+### Fixed
+
+- Treat readable lowercase word tokens in files named exactly `.env.example`, such as `sk-local-validation-only`, as low-risk placeholders while preserving normal scoring in other environment files.
+
 ## [0.5.1] - 2026-07-19
 
 ### Changed

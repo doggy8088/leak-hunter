@@ -1,6 +1,6 @@
 {
   "name": "leak-hunter",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Cross-platform repository secret scanner",
   "bin": {
     "leak-hunter": "npm/cli.cjs"
