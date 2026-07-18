@@ -339,6 +339,43 @@ fn scores_hostless_postgres_uri_as_low_risk() {
 }
 
 #[test]
+fn suppresses_env_interpolated_postgres_uri_in_compose_yaml() {
+    let dir = tempfile::tempdir().unwrap();
+    let contents = "DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}\n";
+    std::fs::write(dir.path().join("compose.yaml"), contents).unwrap();
+    std::fs::write(dir.path().join("config.yaml"), contents).unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+
+    assert_eq!(result.summary.findings, 1);
+    assert_eq!(result.findings[0].finding_type, "postgres_uri");
+    assert_eq!(result.findings[0].file_path, "config.yaml");
+}
+
+#[test]
+fn detects_literal_postgres_credentials_in_compose_yaml() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("compose.yaml"),
+        "DATABASE_URL: postgresql://app_user:synthetic_password_1234@postgres:5432/app_db\n",
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    let postgres_findings = result
+        .findings
+        .iter()
+        .filter(|finding| finding.finding_type == "postgres_uri")
+        .count();
+
+    assert_eq!(postgres_findings, 1);
+}
+
+#[test]
 fn lowers_redis_localhost_uri_risk() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(
@@ -432,6 +469,35 @@ fn lowers_risk_for_python_site_packages_files() {
         .expect("expected site-packages finding");
 
     assert_eq!(site_packages_finding.risk_score, 20);
+}
+
+#[test]
+fn lowers_risk_for_env_example_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let secret = ["sk-proj-", "abcDEFghiJKLmnopQRSTuvwxYZ123456"].concat();
+    for file_name in ["app.env", ".env.example", ".env.example.local"] {
+        std::fs::write(
+            dir.path().join(file_name),
+            format!("OPENAI_API_KEY={secret}\n"),
+        )
+        .unwrap();
+    }
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    let score_for = |file_name: &str| {
+        result
+            .findings
+            .iter()
+            .find(|finding| finding.file_path == file_name)
+            .map(|finding| finding.risk_score)
+            .unwrap_or_else(|| panic!("expected finding in {file_name}"))
+    };
+
+    assert_eq!(score_for("app.env"), 98);
+    assert_eq!(score_for(".env.example"), 65);
+    assert_eq!(score_for(".env.example.local"), 98);
 }
 
 #[test]
@@ -686,6 +752,42 @@ fn generic_password_rejects_code_references_and_non_random_values() {
         })
         .collect();
     assert!(unexpected.is_empty(), "unexpected findings: {unexpected:?}");
+}
+
+#[test]
+fn generic_password_rejects_runtime_code_expressions_in_any_file_type() {
+    let dir = tempfile::tempdir().unwrap();
+    let cases = [
+        ("generator.py", "password = secrets.token_urlsafe(32)\n"),
+        ("generator.js", "password = crypto.randomBytes(32)\n"),
+        ("generator.rb", "password = SecureRandom.hex(32)\n"),
+        ("generator.go", "password = generatePassword(32)\n"),
+        ("generator.rs", "password = rand::random(32)\n"),
+        ("generator.php", "password = random_bytes(32)\n"),
+    ];
+    for (file_name, contents) in cases {
+        std::fs::write(dir.path().join(file_name), contents).unwrap();
+    }
+
+    let literal = ["aB3d", "E5fG", "7hJ9"].concat();
+    std::fs::write(
+        dir.path().join("literal.py"),
+        format!("password = '{literal}'\n"),
+    )
+    .unwrap();
+
+    let mut all_risks = options();
+    all_risks.min_risk = 0;
+    let result = scan_path(dir.path(), &all_risks).unwrap();
+    let findings: Vec<_> = result
+        .findings
+        .iter()
+        .filter(|finding| finding.finding_type == "generic_password_context")
+        .collect();
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].file_path, "literal.py");
+    assert_eq!(findings[0].risk_score, 65);
 }
 
 #[test]

@@ -276,7 +276,7 @@ fn scan_file(root: &Path, path: &Path, options: &ScanOptions) -> FileOutcome {
                     continue;
                 }
             }
-            if should_suppress(&rel, &text, secret) {
+            if should_suppress(pattern.id, &rel, &text, secret) {
                 continue;
             }
             let secret_entropy = shannon_entropy(secret);
@@ -335,12 +335,71 @@ fn is_binary(bytes: &[u8]) -> bool {
     bytes.iter().take(8192).any(|b| *b == 0)
 }
 
-fn should_suppress(file_path: &str, text: &str, _secret: &str) -> bool {
+fn should_suppress(pattern_id: &str, file_path: &str, text: &str, secret: &str) -> bool {
     let lower = file_path.to_ascii_lowercase();
     if lower.ends_with("package-lock.json") && text.contains("\"integrity\"") {
         return true;
     }
+    if pattern_id == "postgres_uri"
+        && is_compose_yaml_path(&lower)
+        && is_env_interpolated_postgres_uri(secret)
+    {
+        return true;
+    }
     false
+}
+
+fn is_compose_yaml_path(lower_path: &str) -> bool {
+    lower_path.rsplit('/').next() == Some("compose.yaml")
+}
+
+fn is_env_interpolated_postgres_uri(secret: &str) -> bool {
+    let Some((scheme, remainder)) = secret.split_once("://") else {
+        return false;
+    };
+    if !matches!(
+        scheme.to_ascii_lowercase().as_str(),
+        "postgres" | "postgresql"
+    ) {
+        return false;
+    }
+
+    let Some((userinfo, location)) = remainder.split_once('@') else {
+        return false;
+    };
+    let Some((username, password)) = userinfo.split_once(':') else {
+        return false;
+    };
+    let Some((host, database_and_suffix)) = location.split_once('/') else {
+        return false;
+    };
+    let database = database_and_suffix
+        .split(['?', '#'])
+        .next()
+        .unwrap_or_default();
+
+    !host.is_empty()
+        && is_env_variable_reference(username, false)
+        && is_env_variable_reference(password, false)
+        && is_env_variable_reference(database, true)
+}
+
+fn is_env_variable_reference(value: &str, allow_missing_closing_brace: bool) -> bool {
+    let Some(body) = value.strip_prefix("${") else {
+        return false;
+    };
+    let body = match body.strip_suffix('}') {
+        Some(body) => body,
+        None if allow_missing_closing_brace => body,
+        None => return false,
+    };
+    let mut bytes = body.bytes();
+    let Some(first) = bytes.next() else {
+        return false;
+    };
+
+    (first.is_ascii_alphabetic() || first == b'_')
+        && bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
 }
 
 fn risk_score(
@@ -378,7 +437,9 @@ fn risk_score(
     }
 
     let mut score = i16::from(path_adjusted_base_score(base, &lower_path));
-    if lower_path.ends_with(".env") || lower_path.contains(".env.") {
+    if !is_env_example_path(&lower_path)
+        && (lower_path.ends_with(".env") || lower_path.contains(".env."))
+    {
         score += 8;
     }
     if lower_path.contains("config")
@@ -505,11 +566,21 @@ fn risk_score(
 }
 
 fn path_adjusted_base_score(base: u8, lower_path: &str) -> u8 {
-    if is_python_site_packages_path(lower_path) {
+    let score = if is_python_site_packages_path(lower_path) {
         20
     } else {
         base
+    };
+
+    if is_env_example_path(lower_path) {
+        score.saturating_sub(25)
+    } else {
+        score
     }
+}
+
+fn is_env_example_path(lower_path: &str) -> bool {
+    lower_path.rsplit('/').next() == Some(".env.example")
 }
 
 fn is_python_site_packages_path(lower_path: &str) -> bool {

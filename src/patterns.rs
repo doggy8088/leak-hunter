@@ -769,8 +769,8 @@ fn is_generic_password_code_reference(secret: &str) -> bool {
         return true;
     }
 
-    if let Some(call_target) = secret.strip_suffix("()") {
-        return is_ascii_identifier(call_target);
+    if is_ascii_call_expression(secret) {
+        return true;
     }
 
     let mut segments = secret.split('.');
@@ -779,6 +779,38 @@ fn is_generic_password_code_reference(secret: &str) -> bool {
     };
     let mut remaining = segments.peekable();
     remaining.peek().is_some() && is_ascii_identifier(first) && remaining.all(is_ascii_identifier)
+}
+
+fn is_ascii_call_expression(value: &str) -> bool {
+    let Some(open_parenthesis) = value.find('(') else {
+        return false;
+    };
+    if !is_ascii_callable_path(&value[..open_parenthesis]) {
+        return false;
+    }
+
+    let mut depth = 0usize;
+    let mut saw_closing_parenthesis = false;
+    for byte in value[open_parenthesis..].bytes() {
+        match byte {
+            b'(' => depth += 1,
+            b')' => {
+                let Some(next_depth) = depth.checked_sub(1) else {
+                    return false;
+                };
+                depth = next_depth;
+                saw_closing_parenthesis = true;
+            }
+            _ => {}
+        }
+    }
+
+    saw_closing_parenthesis && depth == 0
+}
+
+fn is_ascii_callable_path(value: &str) -> bool {
+    let normalized = value.replace("::", ".").replace("->", ".");
+    normalized.split('.').all(is_ascii_identifier)
 }
 
 fn is_generic_password_url(secret: &str) -> bool {

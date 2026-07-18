@@ -98,6 +98,7 @@
 ### A. 檔案路徑與命名加成
 *   **環境變數檔案 (Env Files)**：
     *   若檔案路徑後綴為 `.env` 或包含 `.env.`，分數 **`+8`**。
+    *   精確檔名為 `.env.example` 時，改為分數 **`-25`**，且不套用前述 `+8` 加成。
 *   **配置與工作流路徑 (Config/Workflow)**：
     *   若檔案路徑中包含 `config`、`settings` 或 `workflow`，分數 **`+5`**。
 *   **說明文件路徑 (Docs/Readme) 的扣分**：
@@ -113,12 +114,14 @@
 *   **一般密碼欄位規則**：
     *   `generic_password_context` 只接受完整的 `password`、`passwd` 或 `pwd` 標籤，並要求候選值位於同一行。
     *   候選值長度須為 8 至 128 個 ASCII 字元、至少包含兩種字元類別、6 個不同字元，且香農熵大於等於 `3.0`。
-    *   URL、程式碼 member access、函式呼叫與明顯 identifier 不會產生 finding。
+    *   URL、程式碼成員存取、帶參數或不帶參數的函式與方法呼叫，以及明顯識別字不會產生 finding；此判斷不依賴副檔名。
     *   基礎分數為 `65`；即使位於 `README` 或 `docs/` 路徑並扣除 25 分，仍為 `40` 分，可在預設門檻顯示。
 *   **Google API Key 於 Firebase 的扣分**：
     *   當規則為 `google_api_key`，且檔案路徑包含 `firebase`、`google-services.json`、`googleservice-info.plist` 或內容含 `firebaseconfig` 時，因通常為公開設定，分數 **`-55`**。
 *   **AWS Access Key ID 存在 Secret Key 的加成**：
     *   當規則為 `aws_access_key_id`，且同一檔案中亦偵測到 `secret_access_key` 關鍵字時，分數 **`+10`**。
+*   **Compose PostgreSQL 環境變數插值抑制**：
+    *   在精確檔名 `compose.yaml` 中，若 PostgreSQL URI 的使用者名稱、密碼與資料庫名稱皆為純 `${VAR}` 插值，則不產生 finding；若任一帳密為字面值，仍照常回報。
 
 ### D. 台灣 PDPA 個資規則專屬加成
 針對以 `taiwan_` 開頭的台灣個資規則，若匹配點周圍 **150 字元窗格**內包含特定個資關聯關鍵字時，分數 **`+15`**（分數上限調整至 100 分）：
