@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 
 CARGO ?= cargo
+NODE ?= node
 NPM ?= npm
 PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 TARGET ?= .
@@ -59,7 +60,8 @@ install-cargo-local: release ## 以 cargo 全域安裝目前原始碼
 	$(CARGO) install --path "$(PROJECT_ROOT)" --force
 
 install-npm-local: release ## 以 npm 全域安裝目前尚未發佈的版本
-	$(NPM) install --global "$(PROJECT_ROOT)"
+	$(NODE) "$(PROJECT_ROOT)/npm/postinstall.cjs"
+	$(NPM) install --global --ignore-scripts "$(PROJECT_ROOT)"
 
 uninstall-npm: ## 移除全域 npm 版本
 	$(NPM) uninstall --global leak-hunter

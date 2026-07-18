@@ -45,3 +45,22 @@ fn npm_postinstall_downloads_and_verifies_release_checksums() {
     assert!(script.contains("verifyChecksum"));
     assert!(script.contains("Checksum mismatch"));
 }
+
+#[test]
+fn npm_local_install_runs_postinstall_before_ignoring_lifecycle_scripts() {
+    let makefile = std::fs::read_to_string("Makefile").unwrap();
+    let target = makefile
+        .split_once("install-npm-local:")
+        .unwrap()
+        .1
+        .split_once("uninstall-npm:")
+        .unwrap()
+        .0;
+    let postinstall = target
+        .find("$(NODE) \"$(PROJECT_ROOT)/npm/postinstall.cjs\"")
+        .unwrap();
+    let install = target
+        .find("$(NPM) install --global --ignore-scripts")
+        .unwrap();
+    assert!(postinstall < install);
+}
