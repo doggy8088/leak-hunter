@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-07-19
+
+### Changed
+
+- Findings in files named exactly `.env.example` now receive a 25-point risk reduction instead of the environment-file boost.
+
+### Fixed
+
+- Suppress PostgreSQL URIs in `compose.yaml` when their username, password, and database components are environment-variable interpolations, while preserving findings for literal credentials.
+- Exclude runtime function and method call expressions assigned to password fields from `generic_password_context` findings across source file types.
+
 ## [0.5.0] - 2026-07-18
 
 ### Added
