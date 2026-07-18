@@ -143,6 +143,7 @@
 2.  **一般系統佔位金鑰 (`is_likely_placeholder`)**：
     *   符合常見金鑰佔位模式（如 `sk-xxxxxxxxxxxxxxxxxxxxxxxx`、`example`、`dummy`、`placeholder`、`your_api_key_here` 等）。
     *   具有大於等於 16 碼連續相同字元的主體金鑰。
+    *   在精確檔名 `.env.example` 中，由至少四個全小寫短詞段以 `-` 或 `_` 分隔的可讀 token 也視為範例值；例如 `sk-local-validation-only`。套用 `.env.example` 路徑降權後，基礎分數大於等於 30 的此類 finding 最高為 5 分。
 3.  **一般密碼欄位佔位值**：
     *   弱密碼名稱、環境變數引用與模板引用會保留為 `30` 分 Low finding，不會出現在預設 `--min-risk 40` 報告中。
 4.  **說明文件範例**：

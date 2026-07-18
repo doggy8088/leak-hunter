@@ -501,6 +501,34 @@ fn lowers_risk_for_env_example_files() {
 }
 
 #[test]
+fn lowers_readable_word_tokens_in_env_example_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let secret = "sk-local-validation-only";
+    for file_name in ["app.env", ".env.example"] {
+        std::fs::write(
+            dir.path().join(file_name),
+            format!("OPENAI_API_KEY={secret}\n"),
+        )
+        .unwrap();
+    }
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    let finding_for = |file_name: &str| {
+        result
+            .findings
+            .iter()
+            .find(|finding| finding.file_path == file_name)
+            .unwrap_or_else(|| panic!("expected finding in {file_name}"))
+    };
+
+    assert_eq!(finding_for("app.env").risk_score, 98);
+    assert_eq!(finding_for(".env.example").risk_score, 5);
+    assert!(finding_for(".env.example").entropy > 3.0);
+}
+
+#[test]
 fn include_exclude_and_skip_accounting_match_options() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("a.txt"), "hello").unwrap();

@@ -424,7 +424,8 @@ fn risk_score(
 
     // Placeholders and documentation examples are rated as Low risk (30)
     let is_placeholder = is_likely_placeholder(secret)
-        || pattern_id == "generic_password_context" && is_generic_password_placeholder(secret);
+        || pattern_id == "generic_password_context" && is_generic_password_placeholder(secret)
+        || is_env_example_readable_placeholder(secret, &lower_path);
     let is_doc_example = (lower_path.contains("readme")
         || lower_path.contains("docs/")
         || lower_path.contains("documentation")
@@ -581,6 +582,28 @@ fn path_adjusted_base_score(base: u8, lower_path: &str) -> u8 {
 
 fn is_env_example_path(lower_path: &str) -> bool {
     lower_path.rsplit('/').next() == Some(".env.example")
+}
+
+fn is_env_example_readable_placeholder(secret: &str, lower_path: &str) -> bool {
+    if !is_env_example_path(lower_path) {
+        return false;
+    }
+
+    let mut segment_count = 0usize;
+    for segment in secret
+        .trim_matches(['"', '\'', '`'])
+        .split(['-', '_'])
+        .filter(|segment| !segment.is_empty())
+    {
+        if !(2..=16).contains(&segment.len())
+            || !segment.bytes().all(|byte| byte.is_ascii_lowercase())
+        {
+            return false;
+        }
+        segment_count += 1;
+    }
+
+    segment_count >= 4
 }
 
 fn is_python_site_packages_path(lower_path: &str) -> bool {
