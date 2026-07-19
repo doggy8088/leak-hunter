@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-07-19
+
+### Fixed
+
+- Prevent the Taiwan mobile-number detector from joining timestamp digits across line boundaries while preserving supported spaces and hyphens within a single line.
+- Avoid npm 11 lifecycle-script approval warnings during `make install-npm-local` by running the native-binary postinstall step explicitly before creating the global link with lifecycle scripts disabled.
+
 ## [0.5.2] - 2026-07-19
 
 ### Fixed
