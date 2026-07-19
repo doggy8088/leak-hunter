@@ -106,6 +106,24 @@ fn does_not_extract_taiwan_mobile_from_alphanumeric_token() {
 }
 
 #[test]
+fn does_not_extract_taiwan_mobile_across_line_breaks() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("timestamps.csv"),
+        "2026-07-18T22:29:58.095000\n2026-07-19T00:00:00.000000\n",
+    )
+    .unwrap();
+
+    let mut opts = options();
+    opts.min_risk = 0;
+    let result = scan_path(dir.path(), &opts).unwrap();
+    assert!(result
+        .findings
+        .iter()
+        .all(|f| f.finding_type != "taiwan_mobile"));
+}
+
+#[test]
 fn scores_strict_taiwan_mobile_formats_at_base_risk() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(
